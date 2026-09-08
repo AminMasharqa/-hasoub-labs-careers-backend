@@ -24,11 +24,11 @@ Key outcomes the platform must achieve:
 
 ## Phasing
 
-This document is delivered in phases. **Phase 1 (Requirements 1–9) is the current design/spec scope.**
+This document is delivered in phases. **Phase 1 (Requirements 1–4, 4A, 5–9) is the current design/spec scope.**
 
 | Phase | Requirements | Theme |
 | --- | --- | --- |
-| **Phase 1 (current)** | 1–9 | Foundational identity, access, profiles, CVs, job postings, applications, audit, and candidate reviews. No AI_Engine dependency. |
+| **Phase 1 (current)** | 1–4, 4A, 5–9 | Foundational identity, access, profiles, CVs, job postings, applications, audit, Senior contact preferences, and candidate reviews. No AI_Engine dependency. |
 | Phase 2 (deferred) | 10–21 | AI features (JD extraction, scoring, CV/LinkedIn improvement), notes, recruiter handoff, chat, email/WhatsApp, notifications. |
 
 Phase 2 requirements are retained below for context but are **out of scope for the current spec cycle**. Where a Phase 1 requirement depends on infrastructure whose full form is Phase 2 (transactional email, notifications), the Phase 1 requirement defines only the minimal capability it needs; see the Cross-Cutting Constraints.
@@ -40,8 +40,12 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 * **Admin**: A HasoubLabs employee with full platform access. Responsible for overseeing candidates, managing users, and configuring platform settings. The Admin role cannot be combined with the Candidate or Senior role on the same account.
 * **Candidate**: An Arab student or graduate who registers on the platform to seek employment in Israel's high-tech industry.
 * **Senior / Job_Poster**: A senior professional registered on the platform who can post job openings. A single person may hold both the Candidate and Senior roles on one account (see Requirement 1).
+* **Company_Affiliation**: A free-text field (≤150 characters) on a Senior's profile naming the company the Senior is affiliated with; used to evaluate the `SameCompany` Contact_Scope_Preference (Requirement 4A).
+* **Field_Of_Expertise**: 1–10 skills, drawn from the Skill_Taxonomy, on a Senior's profile identifying that Senior's area of expertise; used to evaluate the `FieldOfExpertise` Contact_Scope_Preference (Requirement 4A).
+* **Contact_Channel_Preference**: A Senior profile field indicating how, if at all, the Senior may be contacted about jobs. One of: `Chat`, `Email`, `Both`, `None` (Requirement 4A).
+* **Contact_Scope_Preference**: A Senior profile field indicating which Job_Descriptions the Senior is contactable for, required whenever Contact_Channel_Preference is not `None`. One of: `OwnPostingsOnly`, `SameCompany`, `FieldOfExpertise` (Requirement 4A).
 * **Recruiter** *(Phase 2)*: An external company recruiter who receives consolidated candidate profiles via email. The Recruiter does not have a platform login.
-* **Account_Status**: The lifecycle state of a user account. One of: `PendingVerification`, `ApprovedPendingMeeting`, `Approved`, `Rejected`, `Suspended`, `Deactivated`.
+* **Account_Status**: The lifecycle state of a user account. One of: `PendingVerification`, `PendingApproval`, `ApprovedPendingMeeting`, `Approved`, `Rejected`, `Suspended`, `Deactivated`.
 * **Residency_Proof**: A datum submitted at registration to support Israeli residency: an Israeli mobile phone number, an Israeli national ID number, or an Israeli residential address.
 * **Verification_Code**: A single-use numeric code emailed to the registrant's address during registration. Entering it confirms email ownership and completes the automated step of Geographic_Verification.
 * **Geographic_Verification**: The record holding a user's submitted Residency_Proof and its status. State one of: `PendingCode`, `Verified`, `Expired`, `ManualOverride`. The automated step is confirmation of the emailed Verification_Code by the user; the submitted proof is additionally reviewed by an Admin before final approval.
@@ -54,7 +58,7 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 * **Job_Description (JD)**: A posting describing a role's requirements, responsibilities, and qualifications. Status one of: `Draft`, `Open`, `Closed`.
 * **Experience_Level**: A band on a Job_Description: `Junior-level`, `Mid-level`, `Senior-level`, or `Lead`. Indicative year ranges (for Phase 2 matching): Junior-level 0–2, Mid-level 2–5, Senior-level 5–8, Lead 8+.
 * **Application**: A formal expression of interest by a Candidate for a specific Job_Description, created only when the Job_Description's Application_Channel is `Senior_Dashboard` or `Admin_Dashboard`. Status one of: `Submitted`, `Under Review`, `Forwarded to Recruiter`, `Closed`.
-* **Application_Channel**: The routing configured on a Job_Description for how Candidate applications are handled: `Senior_Dashboard`, `Admin_Dashboard`, or `External_Careers_URL` (Requirement 6 AC13).
+* **Application_Channel**: The routing configured on a Job_Description for how Candidate applications are handled: `Senior_Dashboard`, `Admin_Dashboard`, or `External_Careers_URL` (Requirement 6 AC15).
 * **Audit_Log**: The append-only, tamper-evident record of every significant platform action (Requirement 8).
 * **JD_Extraction** *(Phase 2)*: The structured result of automatically parsing a Job_Description.
 * **Candidate_Score** *(Phase 2)*: A 0–100 match score for a Candidate against a Job_Description.
@@ -87,23 +91,25 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 4. WHEN an account holds both the Candidate and Senior roles, THE Platform SHALL let the user select an active role context and switch it within a single session, and SHALL scope every request to the active context; WHERE an account holds exactly one role, THE Platform SHALL default the active context to that account's sole role.
 5. THE Platform SHALL NOT allow the Admin role to be combined with the Candidate or Senior role on the same account.
 6. THE Platform SHALL create the initial Admin account by direct insertion into the database, not through any self-service or in-app flow; thereafter only an existing Admin SHALL create or revoke Admin accounts.
-7. THE Platform SHALL expose all user-management functions (record meeting completion, reject, suspend, reactivate, add or remove roles, generate registration links, manual Geographic_Verification override) only to sessions authenticated as Admin.
-8. THE Platform SHALL allow an Admin to generate role-specific registration links: one that opens the Candidate registration flow and one that opens the Senior registration flow. These links are the only entry points to registration and SHALL NOT be publicly discoverable. EACH registration link SHALL be non-guessable and SHALL be either single-use per invitee or time-bounded with an expiry no longer than the 72-hour Verification_Code window." to edit this point not to generate a new link 
-9. WHEN a registration is submitted, THE Platform SHALL require: full name, email address, a password satisfying the Security constraints, the requested role, and at least one Residency_Proof as required by Requirement 2; and SHALL reject the submission with field-level errors if any requirement is unmet.
-10. IF a registration is submitted with an email address that (compared case-insensitively) already belongs to an account, THEN THE Platform SHALL reject the registration and return an error identifying the email conflict, without disclosing any other account details.
-11. WHEN a registration passes field, password-policy, and Residency_Proof format validation, THE Platform SHALL create the account in `PendingVerification` and email a Verification_Code to the submitted address (per Requirement 2).
+7. THE Platform SHALL expose all user-management functions (record meeting completion, approve or reject a pending registration, suspend, reactivate, add or remove roles, generate registration links, manual Geographic_Verification override) only to sessions authenticated as Admin.
+8. THE Platform SHALL allow an Admin to generate role-specific registration links: one that opens the Candidate registration flow and one that opens the Senior registration flow.
+9. THE registration form SHALL require: full name, email address, a password satisfying the Security constraints, at least one Residency_Proof as required by Requirement 2, and a CV upload; and SHALL reject the submission with field-level errors if any requirement is unmet. The requested role SHALL NOT be a form field; it SHALL be determined by which role-specific registration link (Requirement 1 AC8) the registrant used to enter the flow.
+10. IF a registration is submitted through a given role-specific registration link with an email address that (compared case-insensitively) already belongs to an existing account holding that same role (Candidate or Senior), THEN THE Platform SHALL reject the registration and return an error identifying the email conflict, without disclosing any other account details.
+11. WHEN a registration passes field, password-policy, CV-upload, and Residency_Proof format validation, THE Platform SHALL create the account in `PendingVerification` and email a Verification_Code to the submitted address (per Requirement 2).
 12. WHILE an account is in `PendingVerification`, THE Platform SHALL restrict the user to the code-entry and code-resend screens only, and SHALL deny access to every other feature.
-13. WHEN the user submits the correct Verification_Code before it expires, THE Platform SHALL confirm email ownership, set the Geographic_Verification record to `Verified` (Requirement 2), transition the account to `ApprovedPendingMeeting`, and notify an Admin to arrange the onboarding meeting.
-14. IF the Verification_Code is not confirmed within 72 hours of issue, THEN THE Platform SHALL expire the registration, set the Geographic_Verification record to `Expired`, and release the email address for re-registration.
-15. THE Platform SHALL represent every account with exactly one `Account_Status` value at all times, drawn from: `PendingVerification`, `ApprovedPendingMeeting`, `Approved`, `Rejected`, `Suspended`, `Deactivated`.
-16. WHEN an Admin records that the onboarding meeting is complete for an account in `ApprovedPendingMeeting`, THE Platform SHALL transition the account to `Approved` and record the Admin identity and a UTC timestamp.
-17. WHEN an Admin rejects an account that is in `PendingVerification` or `ApprovedPendingMeeting`, THE Platform SHALL transition it to `Rejected`, record the Admin identity, a UTC timestamp, and a rejection reason of at least 10 characters, and notify the user.
-18. WHILE an account is in any status other than `Approved`, THE Platform SHALL restrict it to the authentication, code-entry, and onboarding screens, and SHALL deny access to every other feature.
-19. THE Platform SHALL allow an Admin to add or remove a role on an existing account; WHEN a role is added to an `Approved` account, THE Platform SHALL grant that role's capabilities without requiring re-registration.
-20. THE Platform SHALL allow an Admin to re-open a `Rejected` account for reconsideration or to release its email address for re-registration.
-21. THE Platform SHALL record every registration submission, `Account_Status` transition, meeting-completion, rejection, and role change in the Audit_Log (Requirement 8).
-22. IF the user submits an incorrect Verification_Code, THEN THE Platform SHALL reject it, allow retry, and lock code entry after 5 consecutive incorrect attempts until a new code is requested.
-23. WHEN the user requests a new Verification_Code, THE Platform SHALL issue a new single-use code, invalidate any prior unexpired code, and reset the incorrect-attempt count.
+13. WHEN the user submits the correct Verification_Code before it expires, THE Platform SHALL confirm email ownership, set the Geographic_Verification record to `Verified` (Requirement 2), transition the account to `PendingApproval`, and notify an Admin that a new registration is awaiting review.
+14. WHILE an account is in `PendingApproval`, THE Platform SHALL restrict the user to the authentication and registration-status screens only, and SHALL deny access to every other feature.
+15. WHEN an Admin reviews and approves an account that is in `PendingApproval`, THE Platform SHALL transition the account to `ApprovedPendingMeeting` and notify an Admin to arrange the onboarding meeting.
+16. WHERE the onboarding meeting has already occurred for an account in `PendingApproval`, THE Platform SHALL let an Admin transition that account directly to `Approved`, bypassing `ApprovedPendingMeeting`, and record the Admin identity and a UTC timestamp.
+17. IF the Verification_Code is not confirmed within 72 hours of issue, THEN THE Platform SHALL expire the registration, set the Geographic_Verification record to `Expired`, and release the email address for re-registration.
+18. THE Platform SHALL represent every account with exactly one `Account_Status` value at all times, drawn from: `PendingVerification`, `PendingApproval`, `ApprovedPendingMeeting`, `Approved`, `Rejected`, `Suspended`, `Deactivated`.
+19. WHEN an Admin records that the onboarding meeting is complete for an account in `ApprovedPendingMeeting`, THE Platform SHALL transition the account to `Approved` and record the Admin identity and a UTC timestamp.
+20. WHEN an Admin rejects an account that is in `PendingVerification`, `PendingApproval`, or `ApprovedPendingMeeting`, THE Platform SHALL transition it to `Rejected`, record the Admin identity, a UTC timestamp, and a rejection reason of at least 10 characters, and notify the user.
+21. WHILE an account is in any status other than `Approved`, THE Platform SHALL restrict it to the authentication, code-entry, and onboarding screens, and SHALL deny access to every other feature.
+22. THE Platform SHALL allow an Admin to re-open a `Rejected` account for reconsideration or to release its email address for re-registration.
+23. THE Platform SHALL record every registration submission, `Account_Status` transition, meeting-completion, rejection, and role change in the Audit_Log (Requirement 8).
+24. IF the user submits an incorrect Verification_Code, THEN THE Platform SHALL reject it, allow retry, and lock code entry after 5 consecutive incorrect attempts until a new code is requested.
+25. WHEN the user requests a new Verification_Code, THE Platform SHALL issue a new single-use code, invalidate any prior unexpired code, and reset the incorrect-attempt count.
 
 ---
 
@@ -111,7 +117,7 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 
 **User Story:** As an Admin, I want every registrant to submit Israeli residency proof and confirm an emailed verification code during registration, so that the platform stays within its intended geographic and legal scope and each account is tied to a working email address.
 
-> **Note on assurance:** the emailed Verification_Code confirms that the registrant controls the submitted email address and completed the flow; it does not by itself establish Israeli residency. Residency assurance rests on the format-validated Residency_Proof plus the Admin's review at the onboarding meeting (Requirement 1). Stronger automated residency checks are an open decision for later.
+> **Note on assurance:** the emailed Verification_Code confirms that the registrant controls the submitted email address and completed the flow; it does not by itself establish Israeli residency. Residency assurance rests on the format-validated Residency_Proof plus the Admin's review during the `PendingApproval` stage and, where the account has not been fast-tracked, at the onboarding meeting (Requirement 1). Stronger automated residency checks are an open decision for later.
 
 #### Acceptance Criteria
 
@@ -120,7 +126,7 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 3. IF automated format validation fails for every submitted proof, THEN THE Platform SHALL reject the submission and return an error identifying which proof failed and listing the accepted proof types and formats.
 4. WHEN a registration passes field and format validation, THE Platform SHALL create a Geographic_Verification record in state `PendingCode` linked to the account, storing the submitted Residency_Proof.
 5. WHEN the Geographic_Verification record enters `PendingCode`, THE Platform SHALL send an email containing a Verification_Code to the registered address within 60 seconds; the code SHALL be 6 to 8 digits, single-use, and SHALL expire 72 hours after issue; the same code satisfies email-ownership confirmation.
-6. WHEN the user submits the correct Verification_Code before it expires, THE Platform SHALL set the Geographic_Verification record to `Verified` and allow the account to transition to `ApprovedPendingMeeting` (Requirement 1).
+6. WHEN the user submits the correct Verification_Code before it expires, THE Platform SHALL set the Geographic_Verification record to `Verified` and allow the account to transition to `PendingApproval` (Requirement 1).
 7. IF the user submits an incorrect Verification_Code, THEN THE Platform SHALL reject it and allow retry.
 8. WHILE 5 or more consecutive incorrect Verification_Code attempts have been recorded and no new code has since been requested, THE Platform SHALL lock code entry.
 9. WHEN the user requests a new Verification_Code, THE Platform SHALL issue a new single-use code, invalidate any prior unexpired code, and reset the incorrect-attempt count.
@@ -179,6 +185,29 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 
 ---
 
+### Requirement 4A: Senior Profile Management (Phase 1)
+
+**User Story:** As a Senior, I want to maintain my profile details and control whether and how I can be contacted about jobs, so that I only receive inquiries I am willing to handle, through channels I prefer.
+
+#### Acceptance Criteria
+
+1. THE Platform SHALL let a Senior maintain a Contact_Channel_Preference field with exactly one value: `Chat`, `Email`, `Both`, or `None`, defaulting to `None` until the Senior explicitly changes it.
+2. WHERE Contact_Channel_Preference is not `None`, THE Platform SHALL require the Senior to also set a Contact_Scope_Preference of exactly one value: `OwnPostingsOnly`, `SameCompany`, or `FieldOfExpertise`.
+3. WHERE Contact_Channel_Preference is `None`, THE Platform SHALL NOT require a Contact_Scope_Preference, and SHALL exclude that Senior from every contactable-Seniors list (Requirement 6 AC13).
+4. THE Platform SHALL let a Senior maintain a Company_Affiliation field (≤150 characters, free text) and a Field_Of_Expertise field (1–10 skills drawn from the Skill_Taxonomy, consistent with Requirement 4 AC2's skill-sourcing rule) on their profile.
+5. WHEN a Senior sets Contact_Scope_Preference to `SameCompany`, THE Platform SHALL require a non-empty Company_Affiliation before saving, and SHALL reject the save with a field-level error otherwise.
+6. WHEN a Senior sets Contact_Scope_Preference to `FieldOfExpertise`, THE Platform SHALL require at least one Field_Of_Expertise skill before saving, and SHALL reject the save with a field-level error otherwise.
+7. THE Platform SHALL let a Senior change their Contact_Channel_Preference and Contact_Scope_Preference at any time, and SHALL apply each change to every subsequent contactability evaluation immediately, without relying on a cached or precomputed snapshot of the prior preference.
+8. WHEN Contact_Channel_Preference is `Email` or `Both`, THE Platform SHALL use the Senior's registered account email address as the contact address for that channel; THE Platform SHALL NOT accept or display an alternate contact email in Phase 1.
+9. WHEN Contact_Channel_Preference is `Chat` or `Both`, THE Platform SHALL record the Chat channel as active for that Senior; because in-app Chat is a Phase 2 capability (Requirement 16) not yet built, THE Platform SHALL display "chat contact not yet available" wherever that Senior's Chat channel would otherwise be shown, and SHALL NOT exclude the Senior from a contactable-Seniors list solely because Chat is unavailable.
+10. WHERE Contact_Scope_Preference is `OwnPostingsOnly`, THE Platform SHALL treat the Senior as contactable only for Job_Descriptions that the Senior personally created.
+11. WHERE Contact_Scope_Preference is `SameCompany`, THE Platform SHALL treat the Senior as contactable for any Job_Description whose company name (Requirement 6 AC1) matches the Senior's Company_Affiliation, compared case-insensitively.
+12. WHERE Contact_Scope_Preference is `FieldOfExpertise`, THE Platform SHALL treat the Senior as contactable for any Job_Description whose required skills (Requirement 6 AC1) intersect with at least one of the Senior's Field_Of_Expertise skills.
+13. WHEN a Job_Description detail view is requested, THE Platform SHALL evaluate the contactability of every Senior using that Senior's then-current Contact_Channel_Preference, Contact_Scope_Preference, Company_Affiliation, and Field_Of_Expertise values, rather than a cached or precomputed result.
+14. THE Platform SHALL let only the Senior themselves and Admin sessions view or modify that Senior's Contact_Channel_Preference, Contact_Scope_Preference, Company_Affiliation, and Field_Of_Expertise fields.
+
+---
+
 ### Requirement 5: CV Upload and Version Control
 
 **User Story:** As a Candidate, I want every CV I upload to be kept as an immutable version, so that my history is never lost and Admins can see how I have evolved.
@@ -219,9 +248,11 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 10. WHEN a Candidate applies one or more filters (skills, location, work model, employment type, experience level), THE Platform SHALL return only `Open` postings matching all selected filters.
 11. THE Platform SHALL let a Senior view their own Job_Descriptions in any status and all `Open` Job_Descriptions; THE Platform SHALL let Admin sessions view all Job_Descriptions in any status.
 12. THE Platform SHALL record every Job_Description creation, edit, publish, and close in the Audit_Log with the actor identity and a timestamp.
-13. THE Platform SHALL let the Job_Description's creator or an Admin set an Application_Channel for the Job_Description, one of: `Senior_Dashboard` (route submitted Applications to the creating Senior's applicant list), `Admin_Dashboard` (route submitted Applications to the Admin portal's applicant list), or `External_Careers_URL` (redirect Candidates to an external careers page instead of submitting an in-platform Application); THE Platform SHALL default new Job_Descriptions to `Senior_Dashboard`.
-14. WHEN a Job_Description's Application_Channel is set to `External_Careers_URL`, THE Platform SHALL require a well-formed HTTPS URL of at most 500 characters before the Job_Description can be published, and SHALL reject a publish attempt with a missing or malformed URL with a field-level error.
-15. THE Platform SHALL allow the creator or an Admin to change a Job_Description's Application_Channel at any time before it is `Closed`; changing the Application_Channel SHALL NOT alter any Application already recorded for that Job_Description.
+13. WHEN a Job_Description detail is displayed, THE Platform SHALL display a list of Seniors who are contactable for that Job_Description per Requirement 4A, each entry showing: the Senior's full name, their active contact channel(s), and — only where `Email` is an active channel — the Senior's account email address; any Senior whose Contact_Channel_Preference is `None` SHALL be excluded from this list.
+14. IF no Senior is contactable for a Job_Description, THEN THE Platform SHALL display an empty-state message indicating no Seniors are currently available to contact for that role.
+15. THE Platform SHALL let the Job_Description's creator or an Admin set an Application_Channel for the Job_Description, one of: `Senior_Dashboard` (route submitted Applications to the creating Senior's applicant list), `Admin_Dashboard` (route submitted Applications to the Admin portal's applicant list), or `External_Careers_URL` (redirect Candidates to an external careers page instead of submitting an in-platform Application); THE Platform SHALL default new Job_Descriptions to `Senior_Dashboard`.
+16. WHEN a Job_Description's Application_Channel is set to `External_Careers_URL`, THE Platform SHALL require a well-formed HTTPS URL of at most 500 characters before the Job_Description can be published, and SHALL reject a publish attempt with a missing or malformed URL with a field-level error.
+17. THE Platform SHALL allow the creator or an Admin to change a Job_Description's Application_Channel at any time before it is `Closed`; changing the Application_Channel SHALL NOT alter any Application already recorded for that Job_Description.
 
 ---
 
@@ -233,7 +264,7 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 
 1. THE Platform SHALL allow a Candidate to submit an Application to an `Open` Job_Description only when the Candidate is `Application-Ready` (Requirement 4 AC7).
 2. IF a Candidate attempts to apply while not `Application-Ready`, THEN THE Platform SHALL reject the submission and return an error naming each unmet condition, including each missing or invalid profile field and, where applicable, the absence of any CV_Version.
-3. WHEN a Candidate clicks apply on a Job_Description, THE Platform SHALL route the request according to that Job_Description's Application_Channel (Requirement 6 AC13), abstracted from the Candidate as a single "apply" action:
+3. WHEN a Candidate clicks apply on a Job_Description, THE Platform SHALL route the request according to that Job_Description's Application_Channel (Requirement 6 AC15), abstracted from the Candidate as a single "apply" action:
    - `Senior_Dashboard`: THE Platform SHALL create an in-platform Application (per criteria 4–6 below) and list it in the creating Senior's applicant list (Requirement 3 AC4) as well as the Admin portal.
    - `Admin_Dashboard`: THE Platform SHALL create an in-platform Application (per criteria 4–6 below) and list it only in the Admin portal's applicant list; THE Platform SHALL NOT include it in any Senior's applicant list view.
    - `External_Careers_URL`: THE Platform SHALL NOT create an in-platform Application record and SHALL instead redirect the Candidate's browser to the Job_Description's configured external careers URL.
@@ -544,7 +575,8 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 Until Requirement 19 is delivered, the Platform SHALL support in-app notifications plus email for exactly these events:
 
 * Registration submitted → email the Verification_Code to the registrant.
-* Verification_Code confirmed (account reached `ApprovedPendingMeeting`) → notify Admins to arrange the onboarding meeting.
+* Verification_Code confirmed (account reached `PendingApproval`) → notify Admins that a new registration is awaiting review.
+* Admin approves a `PendingApproval` account (account reaches `ApprovedPendingMeeting`) → notify Admins to arrange the onboarding meeting.
 * Account moved to `Approved` or `Rejected` → notify the user (rejection includes the reason).
 * In-platform Application submitted → notify the Candidate (in-app immediate, email within 5 minutes).
 * In-platform Application status changed → notify the Candidate.
@@ -560,9 +592,10 @@ The following properties are amenable to property-based testing.
 
 #### Account Lifecycle (Requirement 1)
 
-* **Single status invariant**: At every point in time, an account has exactly one `Account_Status`.
+* **Single status invariant**: At every point in time, an account has exactly one `Account_Status`, drawn from `PendingVerification`, `PendingApproval`, `ApprovedPendingMeeting`, `Approved`, `Rejected`, `Suspended`, `Deactivated`.
 * **No access before Approved**: For any account not in `Approved`, every request to a non-onboarding endpoint is denied.
-* **Meeting gate**: Every `Approved` account has an Admin-recorded meeting-completion event preceding the transition.
+* **Admin review gate**: Every account that reaches `ApprovedPendingMeeting` or `Approved` has a preceding Admin approval event recorded while the account was in `PendingApproval`.
+* **Meeting gate**: Every account that reaches `Approved` via `ApprovedPendingMeeting` has an Admin-recorded meeting-completion event preceding that transition; an account fast-tracked directly from `PendingApproval` to `Approved` instead has an Admin-recorded fast-track decision noting the meeting already occurred.
 * **Admin exclusivity**: No account simultaneously holds Admin and (Candidate or Senior).
 
 #### Geographic Verification (Requirement 2)
