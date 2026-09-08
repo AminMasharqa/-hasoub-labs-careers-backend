@@ -24,12 +24,12 @@ Key outcomes the platform must achieve:
 
 ## Phasing
 
-This document is delivered in phases. **Phase 1 (Requirements 1–8) is the current design/spec scope.**
+This document is delivered in phases. **Phase 1 (Requirements 1–9) is the current design/spec scope.**
 
 | Phase | Requirements | Theme |
 | --- | --- | --- |
-| **Phase 1 (current)** | 1–8 | Foundational identity, access, profiles, CVs, job postings, applications, and audit. No AI_Engine dependency. |
-| Phase 2 (deferred) | 9–21 | AI features (JD extraction, scoring, CV/LinkedIn improvement), reviews, notes, recruiter handoff, chat, email/WhatsApp, notifications. |
+| **Phase 1 (current)** | 1–9 | Foundational identity, access, profiles, CVs, job postings, applications, audit, and candidate reviews. No AI_Engine dependency. |
+| Phase 2 (deferred) | 10–21 | AI features (JD extraction, scoring, CV/LinkedIn improvement), notes, recruiter handoff, chat, email/WhatsApp, notifications. |
 
 Phase 2 requirements are retained below for context but are **out of scope for the current spec cycle**. Where a Phase 1 requirement depends on infrastructure whose full form is Phase 2 (transactional email, notifications), the Phase 1 requirement defines only the minimal capability it needs; see the Cross-Cutting Constraints.
 
@@ -53,11 +53,12 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 * **Application-Ready**: A Candidate whose profile is `Complete` and who has at least one `CV_Version` (Requirement 4 AC7). Required to submit an Application.
 * **Job_Description (JD)**: A posting describing a role's requirements, responsibilities, and qualifications. Status one of: `Draft`, `Open`, `Closed`.
 * **Experience_Level**: A band on a Job_Description: `Junior-level`, `Mid-level`, `Senior-level`, or `Lead`. Indicative year ranges (for Phase 2 matching): Junior-level 0–2, Mid-level 2–5, Senior-level 5–8, Lead 8+.
-* **Application**: A formal expression of interest by a Candidate for a specific Job_Description. Status one of: `Submitted`, `Under Review`, `Forwarded to Recruiter`, `Withdrawn`, `Closed`.
-* **Comment**: An Admin-authored, append-only, free-text note on a Candidate, associated with a specific Job_Description the Candidate applied to (Requirement 8).
+* **Application**: A formal expression of interest by a Candidate for a specific Job_Description, created only when the Job_Description's Application_Channel is `Senior_Dashboard` or `Admin_Dashboard`. Status one of: `Submitted`, `Under Review`, `Forwarded to Recruiter`, `Closed`.
+* **Application_Channel**: The routing configured on a Job_Description for how Candidate applications are handled: `Senior_Dashboard`, `Admin_Dashboard`, or `External_Careers_URL` (Requirement 6 AC13).
+* **Audit_Log**: The append-only, tamper-evident record of every significant platform action (Requirement 8).
 * **JD_Extraction** *(Phase 2)*: The structured result of automatically parsing a Job_Description.
 * **Candidate_Score** *(Phase 2)*: A 0–100 match score for a Candidate against a Job_Description.
-* **Review / Review_Timeline** *(Phase 2)*: A structured evaluation of a Candidate and the append-only sequence of such evaluations.
+* **Review / Review_Timeline**: A structured evaluation of a Candidate and the append-only sequence of such evaluations (Requirement 9).
 * **Candidate_Note** *(Phase 2)*: A free-text annotation for a Candidate in the context of a specific Job_Description.
 * **Recruiter_Package** *(Phase 2)*: A consolidated document sent to an external Recruiter.
 * **Chat_Message** *(Phase 2)*: A message between a Candidate and a Senior via in-app messaging.
@@ -100,7 +101,7 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 18. WHILE an account is in any status other than `Approved`, THE Platform SHALL restrict it to the authentication, code-entry, and onboarding screens, and SHALL deny access to every other feature.
 19. THE Platform SHALL allow an Admin to add or remove a role on an existing account; WHEN a role is added to an `Approved` account, THE Platform SHALL grant that role's capabilities without requiring re-registration.
 20. THE Platform SHALL allow an Admin to re-open a `Rejected` account for reconsideration or to release its email address for re-registration.
-21. ~~THE Platform SHALL record every registration submission, `Account_Status` transition, meeting-completion, rejection, and role change in the Audit_Log.~~ *(Removed — general Audit_Log is no longer defined; Requirement 8 is now scoped to Admin-authored Candidate Comments.)*
+21. THE Platform SHALL record every registration submission, `Account_Status` transition, meeting-completion, rejection, and role change in the Audit_Log (Requirement 8).
 22. IF the user submits an incorrect Verification_Code, THEN THE Platform SHALL reject it, allow retry, and lock code entry after 5 consecutive incorrect attempts until a new code is requested.
 23. WHEN the user requests a new Verification_Code, THE Platform SHALL issue a new single-use code, invalidate any prior unexpired code, and reset the incorrect-attempt count.
 
@@ -130,7 +131,7 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 14. WHEN an `Approved` user changes a field that served as their Residency_Proof, THE Platform SHALL re-run automated format validation.
 15. IF the re-run format validation fails, THEN THE Platform SHALL set the Geographic_Verification record to `PendingCode`, email a new Verification_Code, notify an Admin within 60 seconds, and restrict the account to the authentication, code-entry, and onboarding screens until re-verified.
 16. THE Platform SHALL store national ID numbers and residency-proof data encrypted at rest, accessible only to Admin sessions, and SHALL exclude them from every Senior- and Candidate-facing view.
-17. ~~WHEN any Geographic_Verification state change or manual override occurs, THE Platform SHALL record it in the Audit_Log.~~ *(Removed — general Audit_Log is no longer defined; see Requirement 8.)*
+17. WHEN any Geographic_Verification state change or manual override occurs, THE Platform SHALL record it in the Audit_Log (Requirement 8).
 
 ---
 
@@ -141,14 +142,14 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 #### Acceptance Criteria
 
 1. THE Platform SHALL enforce authorization on the server for every request, deriving permissions solely from the account's assigned roles and, for dual-role accounts, the active role context; for a single-role account the active context SHALL be that account's sole role; THE Platform SHALL NOT provide per-user permission overrides.
-2. THE Platform SHALL grant Admin sessions access to: user and role management, all Candidate profiles and CV_Versions, all Job_Descriptions in any status, all Applications and their status, Candidate Comments (Requirement 8), and platform configuration.
+2. THE Platform SHALL grant Admin sessions access to: user and role management, all Candidate profiles and CV_Versions, all Job_Descriptions in any status, all Applications and their status, every Candidate's full Review_Timeline (Requirement 9), the Audit_Log (read and search only), and platform configuration.
 3. WHEN a session's active context is Candidate, THE Platform SHALL grant access only to: the user's own profile, the user's own CV_Versions, the user's own Applications, and browsing of `Open` Job_Descriptions.
-4. WHEN a session's active context is Senior, THE Platform SHALL grant access only to: creating and managing the user's own Job_Descriptions, browsing all `Open` Job_Descriptions, and viewing the applicant list for the user's own Job_Descriptions (each entry limited to candidate full name, applied role title, and Application status).
+4. WHEN a session's active context is Senior, THE Platform SHALL grant access only to: creating and managing the user's own Job_Descriptions, browsing all `Open` Job_Descriptions, viewing the applicant list for the user's own Job_Descriptions (each entry limited to candidate full name, applied role title, and Application status), and submitting Reviews and viewing their own submitted Reviews for a Candidate (Requirement 9).
 5. THE Platform SHALL NOT expose to any Senior session in Phase 1 any Candidate field beyond the applicant-list fields permitted by criterion 4 (candidate full name, applied role title, and Application status); specifically, a Candidate's email address, phone number, national ID, residency proof, CV files, education entries, work-experience entries, skills, languages, summary, and LinkedIn URL SHALL NOT be exposed to any Senior session.
 6. WHEN a session requests a resource outside its authorized capabilities, THE Platform SHALL deny the request and return an authorization error that is identical whether or not the resource exists, with no observable difference (including response timing) that would let the caller infer the resource's existence, and SHALL include no data from the resource in the response.
 7. THE Platform SHALL prevent any Candidate context from accessing another Candidate's profile, CV_Versions, or Applications.
 8. THE Platform SHALL require authentication for every feature and every item of platform content except: the Candidate and Senior registration flows reached through an Admin-generated registration link, Verification_Code entry, login, and password reset. Job_Descriptions SHALL NOT be visible or discoverable by unauthenticated visitors.
-9. ~~WHEN an authorization check fails, THE Platform SHALL record an Audit_Log entry capturing the actor identity, the attempted action, the target resource identifier, the denied outcome, and a UTC timestamp at millisecond precision.~~ *(Removed — general Audit_Log is no longer defined; see Requirement 8.)*
+9. WHEN an authorization check fails, THE Platform SHALL record an Audit_Log entry capturing the actor identity, the attempted action, the target resource identifier, the denied outcome, and a UTC timestamp at millisecond precision.
 10. WHEN a dual-role user switches active role context, THE Platform SHALL re-derive capabilities for the new context and SHALL NOT carry data access over from the previous context.
 11. WHILE an account is `Suspended` or `Deactivated`, THE Platform SHALL deny all authenticated requests from that account except viewing a status notice.
 
@@ -164,7 +165,7 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 2. THE Platform SHALL source skills from the Skill_Taxonomy.
 3. WHEN a Candidate enters a skill not in the Skill_Taxonomy, THE Platform SHALL store it linked to a normalized term and flag it for Admin taxonomy review.
 4. WHILE an account is `Approved`, THE Platform SHALL let the Candidate edit any field of their own profile at any time.
-5. ~~WHEN a Candidate creates or edits their profile, THE Platform SHALL record the change in the Audit_Log with actor, before and after field values, and a UTC timestamp at millisecond precision.~~ *(Removed — general Audit_Log is no longer defined; see Requirement 8.)*
+5. WHEN a Candidate creates or edits their profile, THE Platform SHALL record the change in the Audit_Log with actor, before and after field values, and a UTC timestamp at millisecond precision.
 6. THE Platform SHALL classify a profile as `Complete` when all of the following hold, and `Draft` otherwise: full name of 1–100 characters; a verified email address; a phone number in valid E.164 form; at least one education entry; and at least one skill. This is the single definition of profile completeness used across the Platform.
 7. THE Platform SHALL classify a Candidate as `Application-Ready` when their profile is `Complete` and at least one CV_Version exists on their account.
 8. WHEN a Candidate saves profile changes that leave the profile not `Complete`, THE Platform SHALL persist the profile in `Draft` state and list every missing or invalid field by name.
@@ -196,7 +197,7 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 10. WHEN any CV_Version is retrieved, THE Platform SHALL recompute its checksum and, IF it does not match the stored checksum, THEN fail the retrieval and raise an integrity alert to an Admin.
 11. THE Platform SHALL store CV files encrypted at rest.
 12. THE Platform SHALL retain all CV_Versions per the Data Retention constraint; no role SHALL delete an individual CV_Version. Account-level data deletion follows the Data Retention constraint.
-13. ~~THE Platform SHALL record every CV_Version upload, active-version designation, quarantine, and integrity-check failure in the Audit_Log.~~ *(Removed — general Audit_Log is no longer defined; see Requirement 8.)*
+13. THE Platform SHALL record every CV_Version upload, active-version designation, quarantine, and integrity-check failure in the Audit_Log (Requirement 8).
 
 ---
 
@@ -213,11 +214,14 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 5. IF a user who is neither the creator nor an Admin attempts to edit, publish, or close a Job_Description, THEN THE Platform SHALL reject the action and return an authorization error.
 6. WHEN a Job_Description is `Closed`, THE Platform SHALL display a closed indicator in all list and detail views and SHALL reject any new Application for it.
 7. THE Platform SHALL NOT allow a `Closed` Job_Description to be reopened; a new posting SHALL be created instead.
-8. WHEN an `Open` Job_Description that has existing Applications is edited, ~~THE Platform SHALL record the change in the Audit_Log with before and after values;~~ existing Applications SHALL remain associated with the posting. *(Audit_Log clause removed — general Audit_Log is no longer defined; see Requirement 8.)*
+8. WHEN an `Open` Job_Description that has existing Applications is edited, THE Platform SHALL record the change in the Audit_Log with before and after values; existing Applications SHALL remain associated with the posting.
 9. WHEN a Candidate browses Job_Descriptions, THE Platform SHALL show only `Open` postings, paginated at a maximum of 20 items per page, searchable by role title, company name, and required skills.
 10. WHEN a Candidate applies one or more filters (skills, location, work model, employment type, experience level), THE Platform SHALL return only `Open` postings matching all selected filters.
 11. THE Platform SHALL let a Senior view their own Job_Descriptions in any status and all `Open` Job_Descriptions; THE Platform SHALL let Admin sessions view all Job_Descriptions in any status.
-12. ~~THE Platform SHALL record every Job_Description creation, edit, publish, and close in the Audit_Log with the actor identity and a timestamp.~~ *(Removed — general Audit_Log is no longer defined; see Requirement 8.)*
+12. THE Platform SHALL record every Job_Description creation, edit, publish, and close in the Audit_Log with the actor identity and a timestamp.
+13. THE Platform SHALL let the Job_Description's creator or an Admin set an Application_Channel for the Job_Description, one of: `Senior_Dashboard` (route submitted Applications to the creating Senior's applicant list), `Admin_Dashboard` (route submitted Applications to the Admin portal's applicant list), or `External_Careers_URL` (redirect Candidates to an external careers page instead of submitting an in-platform Application); THE Platform SHALL default new Job_Descriptions to `Senior_Dashboard`.
+14. WHEN a Job_Description's Application_Channel is set to `External_Careers_URL`, THE Platform SHALL require a well-formed HTTPS URL of at most 500 characters before the Job_Description can be published, and SHALL reject a publish attempt with a missing or malformed URL with a field-level error.
+15. THE Platform SHALL allow the creator or an Admin to change a Job_Description's Application_Channel at any time before it is `Closed`; changing the Application_Channel SHALL NOT alter any Application already recorded for that Job_Description.
 
 ---
 
@@ -229,61 +233,63 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 
 1. THE Platform SHALL allow a Candidate to submit an Application to an `Open` Job_Description only when the Candidate is `Application-Ready` (Requirement 4 AC7).
 2. IF a Candidate attempts to apply while not `Application-Ready`, THEN THE Platform SHALL reject the submission and return an error naming each unmet condition, including each missing or invalid profile field and, where applicable, the absence of any CV_Version.
-3. WHEN a Candidate submits an Application, THE Platform SHALL record: the Candidate identity; the Job_Description identifier; the CV_Version that is `active` at submission time; and a submission timestamp in UTC.
-4. FOR ALL Applications, the CV_Version recorded at submission SHALL remain immutable regardless of later CV uploads or Admin re-designation.
-5. THE Platform SHALL represent every Application with one status: `Submitted`, `Under Review`, `Forwarded to Recruiter`, `Withdrawn`, or `Closed`.
-6. IF a Candidate has a non-terminal Application (`Submitted` or `Under Review`) for a Job_Description and attempts to apply to it again, THEN THE Platform SHALL reject the second submission and inform the Candidate that they have already applied.
-7. THE Platform SHALL allow a Candidate to withdraw their own Application while it is `Submitted` or `Under Review`, transitioning it to `Withdrawn`.
+3. WHEN a Candidate clicks apply on a Job_Description, THE Platform SHALL route the request according to that Job_Description's Application_Channel (Requirement 6 AC13), abstracted from the Candidate as a single "apply" action:
+   - `Senior_Dashboard`: THE Platform SHALL create an in-platform Application (per criteria 4–6 below) and list it in the creating Senior's applicant list (Requirement 3 AC4) as well as the Admin portal.
+   - `Admin_Dashboard`: THE Platform SHALL create an in-platform Application (per criteria 4–6 below) and list it only in the Admin portal's applicant list; THE Platform SHALL NOT include it in any Senior's applicant list view.
+   - `External_Careers_URL`: THE Platform SHALL NOT create an in-platform Application record and SHALL instead redirect the Candidate's browser to the Job_Description's configured external careers URL.
+4. WHEN a Candidate submits an Application via the `Senior_Dashboard` or `Admin_Dashboard` channel, THE Platform SHALL record: the Candidate identity; the Job_Description identifier; the CV_Version that is `active` at submission time; and a submission timestamp in UTC.
+5. FOR ALL Applications, the CV_Version recorded at submission SHALL remain immutable regardless of later CV uploads or Admin re-designation.
+6. THE Platform SHALL represent every in-platform Application with one status: `Submitted`, `Under Review`, `Forwarded to Recruiter`, or `Closed`.
+7. IF a Candidate has a non-terminal Application (`Submitted` or `Under Review`) for a Job_Description and attempts to apply to it again, THEN THE Platform SHALL reject the second submission and inform the Candidate that they have already applied.
 8. THE Platform SHALL allow re-application to the same Job_Description only when the Candidate has no non-terminal Application for it and the posting is `Open`.
-9. THE Platform SHALL display to the Candidate a list of all their Applications, each showing current status, applied role title, company name, and submission date.
-10. THE Platform SHALL let Admin sessions set any Application to any defined status and SHALL record each change with a timestamp and the Admin identity.
+9. THE Platform SHALL display to the Candidate a list of all their in-platform Applications, each showing current status, applied role title, company name, and submission date.
+10. THE Platform SHALL let Admin sessions set any in-platform Application to any defined status and SHALL record each change with a timestamp and the Admin identity.
 11. WHEN a Job_Description transitions to `Closed`, THE Platform SHALL transition every Application for it whose status is `Submitted` or `Under Review` to `Closed`.
-12. WHEN an Application is successfully submitted, THE Platform SHALL send the Candidate an in-app confirmation immediately and an email confirmation within 5 minutes.
-13. THE Platform SHALL limit a Candidate to at most 20 Application submissions per rolling 24-hour period.
-14. ~~THE Platform SHALL record every Application creation and status transition in the Audit_Log.~~ *(Removed — general Audit_Log is no longer defined; see Requirement 8.)*
+12. WHEN an in-platform Application is successfully submitted, THE Platform SHALL send the Candidate an in-app confirmation immediately and an email confirmation within 5 minutes.
+13. THE Platform SHALL limit a Candidate to at most 20 Application submissions per rolling 24-hour period, counting only in-platform Applications.
+14. THE Platform SHALL record every Application creation and status transition in the Audit_Log (Requirement 8).
 
 ---
 
-### Requirement 8: Candidate Comments
+### Requirement 8: Audit Trail and Data Integrity
 
-**User Story:** As an Admin, I want to add free-text comments on a Candidate tied to the specific Job_Description they applied for, so that I and other Admins can see the full history of anything noted about that candidate for that role — interview stages, feedback, general remarks, or anything else worth recording (e.g., "technical interview scheduled," "passed first interview, second round next week," "candidate asked to reschedule") — and so that history remains available even after the role is closed.
+**User Story:** As an Admin, I want a complete, tamper-evident audit trail of all significant platform actions, so that I can review decisions, resolve disputes, and demonstrate accountability for candidate data handling.
 
 #### Acceptance Criteria
 
-1. THE Platform SHALL let an Admin add a Comment to a Candidate, associated with a specific Job_Description the Candidate applied to.
-2. THE Platform SHALL allow the content of a Comment to be any free text the Admin chooses; THE Platform SHALL NOT restrict the comment to any predefined category, stage, or type (e.g., interview status).
-3. EACH Comment SHALL contain: the authoring Admin's identity, free-text content of up to 2000 characters, and a creation timestamp in UTC.
-4. WHEN a Comment is submitted with empty or blank content, THE Platform SHALL reject it and return an error indicating that comment content cannot be empty.
-5. THE Platform SHALL display, for a given Candidate and Job_Description, every Comment in chronological order, showing the author and timestamp for each.
-6. THE Platform SHALL let any Admin session view all Comments on a Candidate across every Job_Description that Candidate applied to, not just Comments the viewing Admin authored.
-7. THE Platform SHALL NOT allow a Comment to be edited or deleted by any Admin, including its author; a correction SHALL be added as a new Comment.
-8. THE Platform SHALL prevent Candidate and Senior sessions from viewing any Comment.
-9. WHEN a Job_Description transitions to `Closed`, THE Platform SHALL retain every Comment associated with it and SHALL continue to let any Admin session add new Comments and view the full Comment history for each Candidate who applied to it, unchanged from before closure.
+1. THE Platform SHALL record an Audit_Log entry for every action that creates, modifies, or deletes a platform entity. In Phase 1 this covers at least: account registration and every `Account_Status` transition; email verification; Geographic_Verification decisions and manual overrides; role additions and removals; Admin approvals and rejections; profile creation and update; CV_Version upload, active-version designation, quarantine, and integrity-check failure; Job_Description creation, update, publish, and close; Application creation and status transitions; authorization-check failures; and Audit_Log tamper attempts.
+2. EACH Audit_Log entry SHALL contain: the actor identity (or `system` for automated actions); the action performed; the affected entity type and identifier; the before and after values of every changed field for modification actions; the reason text where the action requires one; and a UTC timestamp at millisecond precision from an NTP-synchronized server clock.
+3. THE Platform SHALL make Audit_Log entries append-only; IF any user, including an Admin, attempts to modify or delete an entry, THEN THE Platform SHALL reject the operation, return an error indicating the action is not permitted, and record the attempt as a new Audit_Log entry identifying the actor and the targeted entry identifier.
+4. THE Platform SHALL let Admin sessions search and filter the Audit_Log by actor identity, action type, entity type, entity identifier, and date range, and SHALL paginate the results.
+5. IF a multi-step operation fails partway through, THEN THE Platform SHALL roll back all partial changes so that every affected entity returns to its state prior to the operation, and SHALL record the failure as a single Audit_Log entry with no intermediate entity state persisted.
+6. FOR every audited entity, applying the recorded before/after field changes from that entity's Audit_Log entries in ascending timestamp order SHALL reproduce the entity's current state. Binary file contents are out of scope for this reconstruction and are covered by the Requirement 5 checksum guarantee.
+7. THE Platform SHALL retain Audit_Log entries for at least 7 years; the Candidate data-deletion path SHALL NOT delete Audit_Log entries, and SHALL only anonymize actor-linked personal data where legally required.
+8. THE Platform SHALL store Audit_Log entries so that their integrity is independently verifiable (for example, per-entry hash chaining) and SHALL surface a tampering alert to Admins if verification fails.
+
+---
+
+### Requirement 9: Candidate Review System
+
+**User Story:** As an Admin or Senior, I want to submit structured evaluations of candidates at any point during the recruitment process, so that a complete and timestamped history of impressions is preserved for every candidate.
+
+#### Acceptance Criteria
+
+1. THE Platform SHALL allow Admins and Seniors to submit a Review for any Candidate at any stage of the recruitment pipeline.
+2. A Review SHALL contain: the reviewer's identity; a UTC timestamp; a structured rating expressed as an integer from 1 to 5 for each of technical ability, communication, culture fit, and overall impression; a free-text assessment of up to 2000 characters; and an optional association with a specific Job_Description.
+3. WHEN a Review is submitted, THE Platform SHALL append it to the Candidate's Review_Timeline in chronological order.
+4. IF a Review submission is missing any required field, THEN THE Platform SHALL reject the submission, return an error identifying each missing field, and not modify the Review_Timeline.
+5. THE Platform SHALL NOT allow a submitted Review to be edited or deleted; corrections SHALL be a new Review referencing the identifier of the Review being corrected.
+6. THE Platform SHALL display the Review_Timeline for a Candidate in chronological order to Admins, including all Reviews regardless of reviewer.
+7. THE Platform SHALL allow Admins to filter a Candidate's Review_Timeline by reviewer identity, date range, and associated Job_Description.
+8. THE Platform SHALL prevent Candidates from viewing their own Review_Timeline.
+9. FOR ALL Reviews in a Candidate's Review_Timeline, the sequence of timestamps SHALL be strictly non-decreasing (append-only guarantee).
+10. WHEN a Senior submits a Review, THE Platform SHALL allow that Senior to view only their own submitted Reviews for that Candidate, and SHALL NOT display Reviews by any other reviewer.
 
 ---
 
 ### Phase 2 Requirements (Deferred — Out of Scope)
 
 > **The following requirements are retained for context and are not in scope for the current design/spec cycle.** They have known open issues to be resolved when Phase 2 planning begins. Cross-references from Phase 1 (e.g., notifications, transactional email) are limited to the minimal capability defined in the Cross-Cutting Constraints.
-
----
-
-### Requirement 9: AI-Powered CV Improvement
-
-**User Story:** As a Candidate, I want AI-generated suggestions to improve my CV's structure and content, so that I can present myself more effectively to recruiters and increase my chances of being selected.
-
-#### Acceptance Criteria
-
-1. THE Platform SHALL provide a CV improvement feature accessible to Candidates from their profile dashboard.
-2. WHEN a Candidate requests CV analysis, THE AI_Engine SHALL analyze the active CV_Version and generate between 1 and 20 Profile_Suggestions, each targeting at least one of: structure, clarity, completeness, or impact of content.
-3. THE AI_Engine SHALL return all Profile_Suggestions within 30 seconds of the Candidate's request under normal load.
-4. EACH Profile_Suggestion SHALL identify the CV section it addresses by name and include a recommended action of no fewer than 10 and no more than 300 characters.
-5. THE Platform SHALL allow the Candidate to mark each Profile_Suggestion with exactly one of: accepted, dismissed, or saved for later.
-6. THE Platform SHALL retain all Profile_Suggestions and their Candidate-assigned statuses for the duration of the Candidate's account.
-7. IF the Candidate has no uploaded CV_Version, THEN THE Platform SHALL display a prompt directing the Candidate to upload a CV before the feature becomes accessible.
-8. THE Platform SHALL NOT modify the Candidate's stored CV or CV_Version without the Candidate's explicit action.
-9. IF the AI_Engine fails to return Profile_Suggestions within 30 seconds or encounters an error, THEN THE Platform SHALL display an error message and allow the Candidate to retry without data loss.
-10. IF CV analysis is requested and Profile_Suggestions already exist for the current active CV_Version, THEN THE Platform SHALL display the existing Profile_Suggestions with their generation timestamp, without triggering a new analysis.
 
 ---
 
@@ -321,22 +327,22 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 
 ---
 
-### Requirement 12: Candidate Review System
+### Requirement 12: AI-Powered CV Improvement
 
-**User Story:** As an Admin or Senior, I want to submit structured evaluations of candidates at any point during the recruitment process, so that a complete and timestamped history of impressions is preserved for every candidate.
+**User Story:** As a Candidate, I want AI-generated suggestions to improve my CV's structure and content, so that I can present myself more effectively to recruiters and increase my chances of being selected.
 
 #### Acceptance Criteria
 
-1. THE Platform SHALL allow Admins and Seniors to submit a Review for any Candidate at any stage of the recruitment pipeline.
-2. A Review SHALL contain: the reviewer's identity; a UTC timestamp; a structured rating expressed as an integer from 1 to 5 for each of technical ability, communication, culture fit, and overall impression; a free-text assessment of up to 2000 characters; and an optional association with a specific Job_Description.
-3. WHEN a Review is submitted, THE Platform SHALL append it to the Candidate's Review_Timeline in chronological order.
-4. IF a Review submission is missing any required field, THEN THE Platform SHALL reject the submission, return an error identifying each missing field, and not modify the Review_Timeline.
-5. THE Platform SHALL NOT allow a submitted Review to be edited or deleted; corrections SHALL be a new Review referencing the identifier of the Review being corrected.
-6. THE Platform SHALL display the Review_Timeline for a Candidate in chronological order to Admins, including all Reviews regardless of reviewer.
-7. THE Platform SHALL allow Admins to filter a Candidate's Review_Timeline by reviewer identity, date range, and associated Job_Description.
-8. THE Platform SHALL prevent Candidates from viewing their own Review_Timeline.
-9. FOR ALL Reviews in a Candidate's Review_Timeline, the sequence of timestamps SHALL be strictly non-decreasing (append-only guarantee).
-10. WHEN a Senior submits a Review, THE Platform SHALL allow that Senior to view only their own submitted Reviews for that Candidate, and SHALL NOT display Reviews by any other reviewer.
+1. THE Platform SHALL provide a CV improvement feature accessible to Candidates from their profile dashboard.
+2. WHEN a Candidate requests CV analysis, THE AI_Engine SHALL analyze the active CV_Version and generate between 1 and 20 Profile_Suggestions, each targeting at least one of: structure, clarity, completeness, or impact of content.
+3. THE AI_Engine SHALL return all Profile_Suggestions within 30 seconds of the Candidate's request under normal load.
+4. EACH Profile_Suggestion SHALL identify the CV section it addresses by name and include a recommended action of no fewer than 10 and no more than 300 characters.
+5. THE Platform SHALL allow the Candidate to mark each Profile_Suggestion with exactly one of: accepted, dismissed, or saved for later.
+6. THE Platform SHALL retain all Profile_Suggestions and their Candidate-assigned statuses for the duration of the Candidate's account.
+7. IF the Candidate has no uploaded CV_Version, THEN THE Platform SHALL display a prompt directing the Candidate to upload a CV before the feature becomes accessible.
+8. THE Platform SHALL NOT modify the Candidate's stored CV or CV_Version without the Candidate's explicit action.
+9. IF the AI_Engine fails to return Profile_Suggestions within 30 seconds or encounters an error, THEN THE Platform SHALL display an error message and allow the Candidate to retry without data loss.
+10. IF CV analysis is requested and Profile_Suggestions already exist for the current active CV_Version, THEN THE Platform SHALL display the existing Profile_Suggestions with their generation timestamp, without triggering a new analysis.
 
 ---
 
@@ -540,8 +546,8 @@ Until Requirement 19 is delivered, the Platform SHALL support in-app notificatio
 * Registration submitted → email the Verification_Code to the registrant.
 * Verification_Code confirmed (account reached `ApprovedPendingMeeting`) → notify Admins to arrange the onboarding meeting.
 * Account moved to `Approved` or `Rejected` → notify the user (rejection includes the reason).
-* Application submitted → notify the Candidate (in-app immediate, email within 5 minutes), the Job_Description creator, and an Admin.
-* Application status changed → notify the Candidate.
+* In-platform Application submitted → notify the Candidate (in-app immediate, email within 5 minutes).
+* In-platform Application status changed → notify the Candidate.
 * CV quarantined or CV integrity-check failed → notify the Candidate and an Admin.
 
 ---
@@ -580,7 +586,7 @@ The following properties are amenable to property-based testing.
 
 #### Application (Requirement 7)
 
-* **Idempotent application**: For a given Candidate + Job_Description pair, at most one non-terminal Application exists at any time. submit(c, jd); submit(c, jd) → count(non_terminal_applications(c, jd)) == 1
+* **Idempotent application**: For a given Candidate + Job_Description pair with an in-platform Application_Channel, at most one non-terminal Application exists at any time. submit(c, jd); submit(c, jd) → count(non_terminal_applications(c, jd)) == 1
 * **CV snapshot immutability**: The CV_Version recorded on an Application never changes after submission.
 * **Close cascade**: After a Job_Description transitions to `Closed`, no Application for it remains in `Submitted` or `Under Review`.
 * **Application-Ready gate**: Every successfully submitted Application belongs to a Candidate who was `Application-Ready` at submission time.
@@ -592,6 +598,11 @@ The following properties are amenable to property-based testing.
 * **State reconstruction**: Applying an entity's recorded field-level changes in ascending timestamp order reproduces its current state (binary file contents excluded).
 * **Transaction atomicity**: For any failed multi-step operation, no affected entity retains an intermediate state, and exactly one failure entry is recorded.
 
+#### Review Timeline (Requirement 9)
+
+* **Append-only ordering**: ∀ r₁, r₂ ∈ timeline: index(r₁) < index(r₂) → timestamp(r₁) ≤ timestamp(r₂)
+* **Count invariant after append**: After submitting N Reviews for a Candidate, len(review_timeline(candidate)) == N.
+
 ### Phase 2 (deferred)
 
 #### Candidate Scoring (Requirements 20, 21)
@@ -599,11 +610,6 @@ The following properties are amenable to property-based testing.
 * **Monotone skill superset**: For any two Candidates A and B scored against the same Job_Description, if skills(A) ⊇ skills(B) then score(A, JD) ≥ score(B, JD).
 * **Score range invariant**: For all computed Candidate_Scores, the value is in [0, 100].
 * **Score determinism**: Running the scoring algorithm twice with the same Candidate structured data and JD_Extraction produces the same score.
-
-#### Review Timeline (Requirement 12)
-
-* **Append-only ordering**: ∀ r₁, r₂ ∈ timeline: index(r₁) < index(r₂) → timestamp(r₁) ≤ timestamp(r₂)
-* **Count invariant after append**: After submitting N Reviews for a Candidate, len(review_timeline(candidate)) == N.
 
 #### JD Extraction Round-Trip (Requirement 14)
 
