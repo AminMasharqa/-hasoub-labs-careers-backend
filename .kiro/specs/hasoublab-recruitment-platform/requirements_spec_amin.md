@@ -24,11 +24,11 @@ Key outcomes the platform must achieve:
 
 ## Phasing
 
-This document is delivered in phases. **Phase 1 (Requirements 1–8) is the current design/spec scope.**
+This document is delivered in phases. **Phase 1 (Requirements 1–4, 4A, 5–8) is the current design/spec scope.**
 
 | Phase | Requirements | Theme |
 | --- | --- | --- |
-| **Phase 1 (current)** | 1–8 | Foundational identity, access, profiles, CVs, job postings, applications, and audit. No AI_Engine dependency. |
+| **Phase 1 (current)** | 1–4, 4A, 5–8 | Foundational identity, access, profiles, CVs, job postings, applications, audit, and Senior contact preferences. No AI_Engine dependency. |
 | Phase 2 (deferred) | 9–21 | AI features (JD extraction, scoring, CV/LinkedIn improvement), reviews, notes, recruiter handoff, chat, email/WhatsApp, notifications. |
 
 Phase 2 requirements are retained below for context but are **out of scope for the current spec cycle**. Where a Phase 1 requirement depends on infrastructure whose full form is Phase 2 (transactional email, notifications), the Phase 1 requirement defines only the minimal capability it needs; see the Cross-Cutting Constraints.
@@ -40,6 +40,10 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 * **Admin**: A HasoubLabs employee with full platform access. Responsible for overseeing candidates, managing users, and configuring platform settings. The Admin role cannot be combined with the Candidate or Senior role on the same account.
 * **Candidate**: An Arab student or graduate who registers on the platform to seek employment in Israel's high-tech industry.
 * **Senior / Job_Poster**: A senior professional registered on the platform who can post job openings. A single person may hold both the Candidate and Senior roles on one account (see Requirement 1).
+* **Company_Affiliation**: A free-text field (≤150 characters) on a Senior's profile naming the company the Senior is affiliated with; used to evaluate the `SameCompany` Contact_Scope_Preference (Requirement 4A).
+* **Field_Of_Expertise**: 1–10 skills, drawn from the Skill_Taxonomy, on a Senior's profile identifying that Senior's area of expertise; used to evaluate the `FieldOfExpertise` Contact_Scope_Preference (Requirement 4A).
+* **Contact_Channel_Preference**: A Senior profile field indicating how, if at all, the Senior may be contacted about jobs. One of: `Chat`, `Email`, `Both`, `None` (Requirement 4A).
+* **Contact_Scope_Preference**: A Senior profile field indicating which Job_Descriptions the Senior is contactable for, required whenever Contact_Channel_Preference is not `None`. One of: `OwnPostingsOnly`, `SameCompany`, `FieldOfExpertise` (Requirement 4A).
 * **Recruiter** *(Phase 2)*: An external company recruiter who receives consolidated candidate profiles via email. The Recruiter does not have a platform login.
 * **Account_Status**: The lifecycle state of a user account. One of: `PendingVerification`, `PendingApproval`, `ApprovedPendingMeeting`, `Approved`, `Rejected`, `Suspended`, `Deactivated`.
 * **Residency_Proof**: A datum submitted at registration to support Israeli residency: an Israeli mobile phone number, an Israeli national ID number, or an Israeli residential address.
@@ -180,6 +184,29 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 
 ---
 
+### Requirement 4A: Senior Profile Management (Phase 1)
+
+**User Story:** As a Senior, I want to maintain my profile details and control whether and how I can be contacted about jobs, so that I only receive inquiries I am willing to handle, through channels I prefer.
+
+#### Acceptance Criteria
+
+1. THE Platform SHALL let a Senior maintain a Contact_Channel_Preference field with exactly one value: `Chat`, `Email`, `Both`, or `None`, defaulting to `None` until the Senior explicitly changes it.
+2. WHERE Contact_Channel_Preference is not `None`, THE Platform SHALL require the Senior to also set a Contact_Scope_Preference of exactly one value: `OwnPostingsOnly`, `SameCompany`, or `FieldOfExpertise`.
+3. WHERE Contact_Channel_Preference is `None`, THE Platform SHALL NOT require a Contact_Scope_Preference, and SHALL exclude that Senior from every contactable-Seniors list (Requirement 6 AC13).
+4. THE Platform SHALL let a Senior maintain a Company_Affiliation field (≤150 characters, free text) and a Field_Of_Expertise field (1–10 skills drawn from the Skill_Taxonomy, consistent with Requirement 4 AC2's skill-sourcing rule) on their profile.
+5. WHEN a Senior sets Contact_Scope_Preference to `SameCompany`, THE Platform SHALL require a non-empty Company_Affiliation before saving, and SHALL reject the save with a field-level error otherwise.
+6. WHEN a Senior sets Contact_Scope_Preference to `FieldOfExpertise`, THE Platform SHALL require at least one Field_Of_Expertise skill before saving, and SHALL reject the save with a field-level error otherwise.
+7. THE Platform SHALL let a Senior change their Contact_Channel_Preference and Contact_Scope_Preference at any time, and SHALL apply each change to every subsequent contactability evaluation immediately, without relying on a cached or precomputed snapshot of the prior preference.
+8. WHEN Contact_Channel_Preference is `Email` or `Both`, THE Platform SHALL use the Senior's registered account email address as the contact address for that channel; THE Platform SHALL NOT accept or display an alternate contact email in Phase 1.
+9. WHEN Contact_Channel_Preference is `Chat` or `Both`, THE Platform SHALL record the Chat channel as active for that Senior; because in-app Chat is a Phase 2 capability (Requirement 16) not yet built, THE Platform SHALL display "chat contact not yet available" wherever that Senior's Chat channel would otherwise be shown, and SHALL NOT exclude the Senior from a contactable-Seniors list solely because Chat is unavailable.
+10. WHERE Contact_Scope_Preference is `OwnPostingsOnly`, THE Platform SHALL treat the Senior as contactable only for Job_Descriptions that the Senior personally created.
+11. WHERE Contact_Scope_Preference is `SameCompany`, THE Platform SHALL treat the Senior as contactable for any Job_Description whose company name (Requirement 6 AC1) matches the Senior's Company_Affiliation, compared case-insensitively.
+12. WHERE Contact_Scope_Preference is `FieldOfExpertise`, THE Platform SHALL treat the Senior as contactable for any Job_Description whose required skills (Requirement 6 AC1) intersect with at least one of the Senior's Field_Of_Expertise skills.
+13. WHEN a Job_Description detail view is requested, THE Platform SHALL evaluate the contactability of every Senior using that Senior's then-current Contact_Channel_Preference, Contact_Scope_Preference, Company_Affiliation, and Field_Of_Expertise values, rather than a cached or precomputed result.
+14. THE Platform SHALL let only the Senior themselves and Admin sessions view or modify that Senior's Contact_Channel_Preference, Contact_Scope_Preference, Company_Affiliation, and Field_Of_Expertise fields.
+
+---
+
 ### Requirement 5: CV Upload and Version Control
 
 **User Story:** As a Candidate, I want every CV I upload to be kept as an immutable version, so that my history is never lost and Admins can see how I have evolved.
@@ -220,6 +247,8 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 10. WHEN a Candidate applies one or more filters (skills, location, work model, employment type, experience level), THE Platform SHALL return only `Open` postings matching all selected filters.
 11. THE Platform SHALL let a Senior view their own Job_Descriptions in any status and all `Open` Job_Descriptions; THE Platform SHALL let Admin sessions view all Job_Descriptions in any status.
 12. ~~THE Platform SHALL record every Job_Description creation, edit, publish, and close in the Audit_Log with the actor identity and a timestamp.~~ *(Removed — general Audit_Log is no longer defined; see Requirement 8.)*
+13. WHEN a Job_Description detail is displayed, THE Platform SHALL display a list of Seniors who are contactable for that Job_Description per Requirement 4A, each entry showing: the Senior's full name, their active contact channel(s), and — only where `Email` is an active channel — the Senior's account email address; any Senior whose Contact_Channel_Preference is `None` SHALL be excluded from this list.
+14. IF no Senior is contactable for a Job_Description, THEN THE Platform SHALL display an empty-state message indicating no Seniors are currently available to contact for that role.
 
 ---
 
