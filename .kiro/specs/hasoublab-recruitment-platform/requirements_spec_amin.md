@@ -41,7 +41,7 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 * **Candidate**: An Arab student or graduate who registers on the platform to seek employment in Israel's high-tech industry.
 * **Senior / Job_Poster**: A senior professional registered on the platform who can post job openings. A single person may hold both the Candidate and Senior roles on one account (see Requirement 1).
 * **Recruiter** *(Phase 2)*: An external company recruiter who receives consolidated candidate profiles via email. The Recruiter does not have a platform login.
-* **Account_Status**: The lifecycle state of a user account. One of: `PendingVerification`, `ApprovedPendingMeeting`, `Approved`, `Rejected`, `Suspended`, `Deactivated`.
+* **Account_Status**: The lifecycle state of a user account. One of: `PendingVerification`, `PendingApproval`, `ApprovedPendingMeeting`, `Approved`, `Rejected`, `Suspended`, `Deactivated`.
 * **Residency_Proof**: A datum submitted at registration to support Israeli residency: an Israeli mobile phone number, an Israeli national ID number, or an Israeli residential address.
 * **Verification_Code**: A single-use numeric code emailed to the registrant's address during registration. Entering it confirms email ownership and completes the automated step of Geographic_Verification.
 * **Geographic_Verification**: The record holding a user's submitted Residency_Proof and its status. State one of: `PendingCode`, `Verified`, `Expired`, `ManualOverride`. The automated step is confirmation of the emailed Verification_Code by the user; the submitted proof is additionally reviewed by an Admin before final approval.
@@ -86,23 +86,25 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 4. WHEN an account holds both the Candidate and Senior roles, THE Platform SHALL let the user select an active role context and switch it within a single session, and SHALL scope every request to the active context; WHERE an account holds exactly one role, THE Platform SHALL default the active context to that account's sole role.
 5. THE Platform SHALL NOT allow the Admin role to be combined with the Candidate or Senior role on the same account.
 6. THE Platform SHALL create the initial Admin account by direct insertion into the database, not through any self-service or in-app flow; thereafter only an existing Admin SHALL create or revoke Admin accounts.
-7. THE Platform SHALL expose all user-management functions (record meeting completion, reject, suspend, reactivate, add or remove roles, generate registration links, manual Geographic_Verification override) only to sessions authenticated as Admin.
-8. THE Platform SHALL allow an Admin to generate role-specific registration links: one that opens the Candidate registration flow and one that opens the Senior registration flow. These links are the only entry points to registration and SHALL NOT be publicly discoverable. EACH registration link SHALL be non-guessable and SHALL be either single-use per invitee or time-bounded with an expiry no longer than the 72-hour Verification_Code window." to edit this point not to generate a new link 
-9. WHEN a registration is submitted, THE Platform SHALL require: full name, email address, a password satisfying the Security constraints, the requested role, and at least one Residency_Proof as required by Requirement 2; and SHALL reject the submission with field-level errors if any requirement is unmet.
-10. IF a registration is submitted with an email address that (compared case-insensitively) already belongs to an account, THEN THE Platform SHALL reject the registration and return an error identifying the email conflict, without disclosing any other account details.
-11. WHEN a registration passes field, password-policy, and Residency_Proof format validation, THE Platform SHALL create the account in `PendingVerification` and email a Verification_Code to the submitted address (per Requirement 2).
+7. THE Platform SHALL expose all user-management functions (record meeting completion, approve or reject a pending registration, suspend, reactivate, add or remove roles, generate registration links, manual Geographic_Verification override) only to sessions authenticated as Admin.
+8. THE Platform SHALL allow an Admin to generate role-specific registration links: one that opens the Candidate registration flow and one that opens the Senior registration flow.
+9. THE registration form SHALL require: full name, email address, a password satisfying the Security constraints, at least one Residency_Proof as required by Requirement 2, and a CV upload; and SHALL reject the submission with field-level errors if any requirement is unmet. The requested role SHALL NOT be a form field; it SHALL be determined by which role-specific registration link (Requirement 1 AC8) the registrant used to enter the flow.
+10. IF a registration is submitted through a given role-specific registration link with an email address that (compared case-insensitively) already belongs to an existing account holding that same role (Candidate or Senior), THEN THE Platform SHALL reject the registration and return an error identifying the email conflict, without disclosing any other account details.
+11. WHEN a registration passes field, password-policy, CV-upload, and Residency_Proof format validation, THE Platform SHALL create the account in `PendingVerification` and email a Verification_Code to the submitted address (per Requirement 2).
 12. WHILE an account is in `PendingVerification`, THE Platform SHALL restrict the user to the code-entry and code-resend screens only, and SHALL deny access to every other feature.
-13. WHEN the user submits the correct Verification_Code before it expires, THE Platform SHALL confirm email ownership, set the Geographic_Verification record to `Verified` (Requirement 2), transition the account to `ApprovedPendingMeeting`, and notify an Admin to arrange the onboarding meeting.
-14. IF the Verification_Code is not confirmed within 72 hours of issue, THEN THE Platform SHALL expire the registration, set the Geographic_Verification record to `Expired`, and release the email address for re-registration.
-15. THE Platform SHALL represent every account with exactly one `Account_Status` value at all times, drawn from: `PendingVerification`, `ApprovedPendingMeeting`, `Approved`, `Rejected`, `Suspended`, `Deactivated`.
-16. WHEN an Admin records that the onboarding meeting is complete for an account in `ApprovedPendingMeeting`, THE Platform SHALL transition the account to `Approved` and record the Admin identity and a UTC timestamp.
-17. WHEN an Admin rejects an account that is in `PendingVerification` or `ApprovedPendingMeeting`, THE Platform SHALL transition it to `Rejected`, record the Admin identity, a UTC timestamp, and a rejection reason of at least 10 characters, and notify the user.
-18. WHILE an account is in any status other than `Approved`, THE Platform SHALL restrict it to the authentication, code-entry, and onboarding screens, and SHALL deny access to every other feature.
-19. THE Platform SHALL allow an Admin to add or remove a role on an existing account; WHEN a role is added to an `Approved` account, THE Platform SHALL grant that role's capabilities without requiring re-registration.
-20. THE Platform SHALL allow an Admin to re-open a `Rejected` account for reconsideration or to release its email address for re-registration.
-21. ~~THE Platform SHALL record every registration submission, `Account_Status` transition, meeting-completion, rejection, and role change in the Audit_Log.~~ *(Removed — general Audit_Log is no longer defined; Requirement 8 is now scoped to Admin-authored Candidate Comments.)*
-22. IF the user submits an incorrect Verification_Code, THEN THE Platform SHALL reject it, allow retry, and lock code entry after 5 consecutive incorrect attempts until a new code is requested.
-23. WHEN the user requests a new Verification_Code, THE Platform SHALL issue a new single-use code, invalidate any prior unexpired code, and reset the incorrect-attempt count.
+13. WHEN the user submits the correct Verification_Code before it expires, THE Platform SHALL confirm email ownership, set the Geographic_Verification record to `Verified` (Requirement 2), transition the account to `PendingApproval`, and notify an Admin that a new registration is awaiting review.
+14. WHILE an account is in `PendingApproval`, THE Platform SHALL restrict the user to the authentication and registration-status screens only, and SHALL deny access to every other feature.
+15. WHEN an Admin reviews and approves an account that is in `PendingApproval`, THE Platform SHALL transition the account to `ApprovedPendingMeeting` and notify an Admin to arrange the onboarding meeting.
+16. WHERE the onboarding meeting has already occurred for an account in `PendingApproval`, THE Platform SHALL let an Admin transition that account directly to `Approved`, bypassing `ApprovedPendingMeeting`, and record the Admin identity and a UTC timestamp.
+17. IF the Verification_Code is not confirmed within 72 hours of issue, THEN THE Platform SHALL expire the registration, set the Geographic_Verification record to `Expired`, and release the email address for re-registration.
+18. THE Platform SHALL represent every account with exactly one `Account_Status` value at all times, drawn from: `PendingVerification`, `PendingApproval`, `ApprovedPendingMeeting`, `Approved`, `Rejected`, `Suspended`, `Deactivated`.
+19. WHEN an Admin records that the onboarding meeting is complete for an account in `ApprovedPendingMeeting`, THE Platform SHALL transition the account to `Approved` and record the Admin identity and a UTC timestamp.
+20. WHEN an Admin rejects an account that is in `PendingVerification`, `PendingApproval`, or `ApprovedPendingMeeting`, THE Platform SHALL transition it to `Rejected`, record the Admin identity, a UTC timestamp, and a rejection reason of at least 10 characters, and notify the user.
+21. WHILE an account is in any status other than `Approved`, THE Platform SHALL restrict it to the authentication, code-entry, and onboarding screens, and SHALL deny access to every other feature.
+22. THE Platform SHALL allow an Admin to re-open a `Rejected` account for reconsideration or to release its email address for re-registration.
+23. ~~THE Platform SHALL record every registration submission, `Account_Status` transition, meeting-completion, rejection, and role change in the Audit_Log.~~ *(Removed — general Audit_Log is no longer defined; Requirement 8 is now scoped to Admin-authored Candidate Comments.)*
+24. IF the user submits an incorrect Verification_Code, THEN THE Platform SHALL reject it, allow retry, and lock code entry after 5 consecutive incorrect attempts until a new code is requested.
+25. WHEN the user requests a new Verification_Code, THE Platform SHALL issue a new single-use code, invalidate any prior unexpired code, and reset the incorrect-attempt count.
 
 ---
 
@@ -110,7 +112,7 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 
 **User Story:** As an Admin, I want every registrant to submit Israeli residency proof and confirm an emailed verification code during registration, so that the platform stays within its intended geographic and legal scope and each account is tied to a working email address.
 
-> **Note on assurance:** the emailed Verification_Code confirms that the registrant controls the submitted email address and completed the flow; it does not by itself establish Israeli residency. Residency assurance rests on the format-validated Residency_Proof plus the Admin's review at the onboarding meeting (Requirement 1). Stronger automated residency checks are an open decision for later.
+> **Note on assurance:** the emailed Verification_Code confirms that the registrant controls the submitted email address and completed the flow; it does not by itself establish Israeli residency. Residency assurance rests on the format-validated Residency_Proof plus the Admin's review during the `PendingApproval` stage and, where the account has not been fast-tracked, at the onboarding meeting (Requirement 1). Stronger automated residency checks are an open decision for later.
 
 #### Acceptance Criteria
 
@@ -119,7 +121,7 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 3. IF automated format validation fails for every submitted proof, THEN THE Platform SHALL reject the submission and return an error identifying which proof failed and listing the accepted proof types and formats.
 4. WHEN a registration passes field and format validation, THE Platform SHALL create a Geographic_Verification record in state `PendingCode` linked to the account, storing the submitted Residency_Proof.
 5. WHEN the Geographic_Verification record enters `PendingCode`, THE Platform SHALL send an email containing a Verification_Code to the registered address within 60 seconds; the code SHALL be 6 to 8 digits, single-use, and SHALL expire 72 hours after issue; the same code satisfies email-ownership confirmation.
-6. WHEN the user submits the correct Verification_Code before it expires, THE Platform SHALL set the Geographic_Verification record to `Verified` and allow the account to transition to `ApprovedPendingMeeting` (Requirement 1).
+6. WHEN the user submits the correct Verification_Code before it expires, THE Platform SHALL set the Geographic_Verification record to `Verified` and allow the account to transition to `PendingApproval` (Requirement 1).
 7. IF the user submits an incorrect Verification_Code, THEN THE Platform SHALL reject it and allow retry.
 8. WHILE 5 or more consecutive incorrect Verification_Code attempts have been recorded and no new code has since been requested, THE Platform SHALL lock code entry.
 9. WHEN the user requests a new Verification_Code, THE Platform SHALL issue a new single-use code, invalidate any prior unexpired code, and reset the incorrect-attempt count.
@@ -538,7 +540,8 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 Until Requirement 19 is delivered, the Platform SHALL support in-app notifications plus email for exactly these events:
 
 * Registration submitted → email the Verification_Code to the registrant.
-* Verification_Code confirmed (account reached `ApprovedPendingMeeting`) → notify Admins to arrange the onboarding meeting.
+* Verification_Code confirmed (account reached `PendingApproval`) → notify Admins that a new registration is awaiting review.
+* Admin approves a `PendingApproval` account (account reaches `ApprovedPendingMeeting`) → notify Admins to arrange the onboarding meeting.
 * Account moved to `Approved` or `Rejected` → notify the user (rejection includes the reason).
 * Application submitted → notify the Candidate (in-app immediate, email within 5 minutes), the Job_Description creator, and an Admin.
 * Application status changed → notify the Candidate.
@@ -554,9 +557,10 @@ The following properties are amenable to property-based testing.
 
 #### Account Lifecycle (Requirement 1)
 
-* **Single status invariant**: At every point in time, an account has exactly one `Account_Status`.
+* **Single status invariant**: At every point in time, an account has exactly one `Account_Status`, drawn from `PendingVerification`, `PendingApproval`, `ApprovedPendingMeeting`, `Approved`, `Rejected`, `Suspended`, `Deactivated`.
 * **No access before Approved**: For any account not in `Approved`, every request to a non-onboarding endpoint is denied.
-* **Meeting gate**: Every `Approved` account has an Admin-recorded meeting-completion event preceding the transition.
+* **Admin review gate**: Every account that reaches `ApprovedPendingMeeting` or `Approved` has a preceding Admin approval event recorded while the account was in `PendingApproval`.
+* **Meeting gate**: Every account that reaches `Approved` via `ApprovedPendingMeeting` has an Admin-recorded meeting-completion event preceding that transition; an account fast-tracked directly from `PendingApproval` to `Approved` instead has an Admin-recorded fast-track decision noting the meeting already occurred.
 * **Admin exclusivity**: No account simultaneously holds Admin and (Candidate or Senior).
 
 #### Geographic Verification (Requirement 2)
