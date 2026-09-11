@@ -318,6 +318,37 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 
 ---
 
+### Requirement 28: Administrative Reports and System Tracking
+
+**User Story:** As an Admin, I want to generate reports summarizing platform activity and track candidate progress over time, so that I have visibility into the recruitment pipeline without manually querying individual records.
+
+#### Acceptance Criteria
+
+1. THE Platform SHALL provide an Admin-only reports section accessible from the Admin dashboard.
+2. THE Platform SHALL allow an Admin to generate activity reports covering at least: number of CVs submitted in a given period, number of candidates registered, number of candidates rejected, number of Applications submitted, and number of Applications advanced by status.
+3. WHEN an Admin generates a report, THE Platform SHALL allow filtering by date range and, where applicable, by Job_Description.
+4. THE Platform SHALL display candidate progress tracking, showing each Candidate's current `Account_Status` and Application statuses across all Job_Descriptions.
+5. THE Platform SHALL present report data in a summary view and allow the Admin to drill down into the underlying records.
+6. THE Platform SHALL NOT expose reports or system tracking data to Candidate or Senior sessions.
+7. THE Platform SHALL record every report generation action in the Audit_Log (Requirement 8) with the Admin identity and a UTC timestamp.
+
+---
+
+### Requirement 29: Data Export to Excel
+
+**User Story:** As an Admin, I want to export platform data to Excel, so that I can perform offline analysis, share reports, and maintain records outside the platform.
+
+#### Acceptance Criteria
+
+1. THE Platform SHALL allow an Admin to export candidate data to an Excel-compatible format (.xlsx) from the candidate list view.
+2. THE Platform SHALL allow an Admin to export Job_Description data to Excel from the job listings view.
+3. THE Platform SHALL allow an Admin to export Application data to Excel, filterable by Job_Description and date range.
+4. THE exported file SHALL include the same fields visible to the Admin in the corresponding platform view at the time of export.
+5. THE Platform SHALL NOT allow Candidate or Senior sessions to export data to Excel.
+6. THE Platform SHALL record every export action in the Audit_Log (Requirement 8) with the Admin identity, the entity type exported, any filters applied, and a UTC timestamp.
+
+---
+
 ### Phase 2 Requirements (Deferred — Out of Scope)
 
 > **The following requirements are retained for context and are not in scope for the current design/spec cycle.** They have known open issues to be resolved when Phase 2 planning begins. Cross-references from Phase 1 (e.g., notifications, transactional email) are limited to the minimal capability defined in the Cross-Cutting Constraints.
@@ -534,6 +565,102 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 
 ---
 
+### Requirement 22: Company- and Job-Specific Interview Preparation Tips *(Phase 2)*
+
+**User Story:** As a Candidate, I want the platform to provide preparation tips tailored to a specific company and/or job position, so that I can focus my interview preparation on the areas that matter most for that role.
+
+#### Acceptance Criteria
+
+1. THE Platform SHALL provide a preparation tips feature accessible to Candidates from a Job_Description detail view.
+2. WHEN a Candidate requests tips for a specific Job_Description, THE Platform SHALL return tips relevant to the company named in that Job_Description and/or the role's requirements.
+3. Tips SHALL cover subjects, requirements, or areas that the company is known to emphasize during interviews.
+4. IF no tips are available for a given company or position, THE Platform SHALL display an appropriate empty-state message.
+5. THE Platform SHALL NOT expose preparation tips to unauthenticated visitors.
+
+---
+
+### Requirement 23: Automatic Job Collection from the Market *(Phase 2)*
+
+**User Story:** As an Admin, I want the platform to automatically discover and collect new job opportunities from the market, so that the job listings stay current without requiring manual entry for every new posting.
+
+#### Acceptance Criteria
+
+1. THE Platform SHALL provide an automated job collection feature that identifies new job opportunities from configured external sources.
+2. WHEN a new job opportunity is collected, THE Platform SHALL create a Job_Description in `Draft` status using a predefined template, populated with the data available from the source.
+3. THE Platform SHALL NOT publish a collected Job_Description automatically; an Admin or Senior SHALL review and explicitly publish it.
+4. THE Platform SHALL allow an Admin to configure which external sources are monitored for job collection.
+5. WHEN a collected job fails to map to the predefined template (e.g., missing required fields), THE Platform SHALL flag it for Admin review rather than creating an incomplete record.
+6. THE Platform SHALL record every automatically collected Job_Description in the Audit_Log (Requirement 8) with a `system` actor identity and a UTC timestamp.
+
+---
+
+### Requirement 24: Recorded Mock Interviews and Tips Service *(Phase 2)*
+
+**User Story:** As a Candidate, I want to watch pre-recorded mock interviews and access categorized tips, so that I can prepare effectively for real interviews at my own pace.
+
+#### Acceptance Criteria
+
+1. THE Platform SHALL provide a library of pre-recorded mock interview videos created by HasoubLabs, accessible to Candidates.
+2. Access to mock interview videos SHALL require payment of a nominal fee; THE Platform SHALL gate video playback behind a successful payment confirmation.
+3. THE Platform SHALL provide a separate tips service containing general and/or role-specific tips organized by category (e.g., by field, experience level, or company type).
+4. WHEN a Candidate selects a tips category, THE Platform SHALL display the tips available for that category.
+5. THE Platform SHALL allow Admins to manage (add, edit, remove) mock interview videos and tips content.
+6. THE Platform SHALL NOT expose mock interview videos or paywalled content to unauthenticated visitors.
+7. IF a Candidate has not completed payment for a video, THE Platform SHALL display a preview or description and a payment prompt, without revealing the full content.
+
+---
+
+### Requirement 25: High-Tech Industry News Feed *(Phase 2)*
+
+**User Story:** As a Candidate, I want to see current news from the high-tech industry on the platform, so that I can stay informed about the market while managing my job search.
+
+#### Acceptance Criteria
+
+1. THE Platform SHALL provide a news feed feature displaying current and relevant news from the high-tech industry and job market.
+2. THE Platform SHALL surface the most recent and relevant news items at the top of the feed.
+3. THE Platform SHALL allow Admins to configure the news sources or content rules used to populate the feed.
+4. WHEN a Candidate clicks a news item, THE Platform SHALL open the full article or redirect to the original source.
+5. THE Platform SHALL NOT expose the news feed to unauthenticated visitors.
+6. THE Platform SHALL refresh news feed content at regular intervals, with the interval configurable by an Admin.
+
+---
+
+### Requirement 26: AI-Based Interview Simulation *(Phase 2)*
+
+**User Story:** As a Candidate, I want to participate in an AI-driven mock interview simulation and receive feedback on my answers, so that I can practice and improve my interview performance before real interviews.
+
+#### Acceptance Criteria
+
+1. THE Platform SHALL provide an AI-based interview simulation feature accessible to Candidates.
+2. THE AI simulation SHALL conduct a realistic interview by presenting questions to the Candidate, either through a visual AI-generated character displayed on screen or through voice with a static image.
+3. WHEN a Candidate starts a simulation session, THE Platform SHALL allow them to select a focus area (e.g., role type, company, or skill domain) to tailor the questions.
+4. WHEN a Candidate completes a simulation session, THE AI_Engine SHALL generate feedback covering the quality of the Candidate's answers, communication style, and areas for improvement.
+5. THE Platform SHALL present the feedback to the Candidate after the session ends.
+6. THE Platform SHALL retain completed simulation session results and feedback for the duration of the Candidate's account.
+7. THE Platform SHALL NOT expose a Candidate's simulation sessions or feedback to any other Candidate or Senior session.
+8. IF the AI_Engine fails to generate feedback after a completed session, THE Platform SHALL notify the Candidate and allow them to retry feedback generation without repeating the interview.
+
+---
+
+### Requirement 27: Community and Interest Groups *(Phase 2)*
+
+**User Story:** As a Candidate, I want to join open group chats organized by field or area of interest, so that I can connect with peers, share experiences, and ask questions relevant to my background.
+
+#### Acceptance Criteria
+
+1. THE Platform SHALL provide a community feature with open group chats organized by predefined categories (e.g., Students, Juniors, Seniors, Hardware, Software).
+2. WHEN a Candidate joins a group, THE Platform SHALL allow them to send and receive messages within that group.
+3. THE Platform SHALL allow a Candidate to be a member of multiple groups simultaneously.
+4. WHEN a message is sent in a group, THE Platform SHALL deliver it to all current members of that group.
+5. THE Platform SHALL store group messages with: sender identity, message content (up to 2000 characters), group identifier, and a UTC send timestamp.
+6. THE Platform SHALL allow Admins to create, rename, and archive group categories.
+7. THE Platform SHALL allow Admins to moderate group messages, including removing messages that violate platform rules.
+8. THE Platform SHALL NOT expose group chat content to unauthenticated visitors.
+9. THE Platform SHALL prevent a Candidate from sending messages in a group they have not joined.
+10. IF a user's account is `Suspended` or `Deactivated`, THE Platform SHALL prevent them from sending new messages and preserve their prior message history in read-only form.
+
+---
+
 ## Cross-Cutting Constraints
 
 ### Data Retention
@@ -554,9 +681,9 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 
 ### Localization
 
-* THE Platform SHALL support Arabic and English in the user interface, with the language preference set per user account.
-* WHEN content is submitted in Arabic, THE Platform SHALL store and display it in Arabic without transliteration or modification.
-* *(Phase 2)* THE AI_Engine SHALL accept CV and Job_Description content in Arabic or English and SHALL produce suggestions in the language of the source content unless the user selects otherwise.
+* THE Platform SHALL support Arabic, English, and Hebrew in the user interface, with the language preference set per user account.
+* WHEN content is submitted in Arabic or Hebrew, THE Platform SHALL store and display it without transliteration or modification.
+* *(Phase 2)* THE AI_Engine SHALL accept CV and Job_Description content in Arabic, English, or Hebrew and SHALL produce suggestions in the language of the source content unless the user selects otherwise.
 
 ### Security
 
@@ -569,6 +696,11 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 * THE Platform SHALL encrypt at rest: national ID numbers, residency-proof documents, and CV files.
 * THE Platform SHALL provide transactional outbound email (provider API or SMTP) for Verification_Codes, rejection notices, and Application confirmations in Phase 1. Full mailbox synchronization is Requirement 17 (Phase 2).
 * *(Phase 2)* THE Platform SHALL disclose to Candidates and Seniors that CV and Job_Description content is transmitted to a third-party AI provider for analysis, and SHALL obtain consent before first use of an AI feature.
+
+### Accessibility
+
+* THE Platform SHALL be accessible and fully usable on mobile phones via a responsive web interface, supporting both portrait and landscape orientations.
+* All core features available on desktop SHALL be available on mobile, with a layout adapted to smaller screen sizes.
 
 ### Phase 1 Notifications (Minimal)
 
