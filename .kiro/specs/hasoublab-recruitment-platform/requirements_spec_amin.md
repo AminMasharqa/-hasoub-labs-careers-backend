@@ -55,7 +55,8 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 * **Profile_Completeness**: A Candidate profile is `Complete` when it satisfies Requirement 4 AC6; otherwise `Draft`.
 * **CV**: A candidate's resume document in PDF format.
 * **CV_Version**: A specific immutable snapshot of a Candidate's CV, stored after a successful upload with a sequential version number and checksum.
-* **Application-Ready**: A Candidate whose profile is `Complete` and who has at least one `CV_Version` (Requirement 4 AC7). Required to submit an Application.
+* **CV_Variant**: A named, purpose-tagged slot maintained by a Candidate (e.g., "Software Engineering", "Data Engineering"). Each CV_Variant holds its own independent sequence of CV_Versions and its own `active` designation. A Candidate may maintain 1–5 CV_Variants. One CV_Variant is designated the Candidate's `primary` variant and is used as the default when no explicit variant is selected.
+* **Application-Ready**: A Candidate whose profile is `Complete` and who has at least one `CV_Version` in any CV_Variant (Requirement 4 AC7). Required to submit an Application.
 * **Job_Description (JD)**: A posting describing a role's requirements, responsibilities, and qualifications. Status one of: `Draft`, `Open`, `Closed`.
 * **Experience_Level**: A band on a Job_Description: `Junior-level`, `Mid-level`, `Senior-level`, or `Lead`. Indicative year ranges (for Phase 2 matching): Junior-level 0–2, Mid-level 2–5, Senior-level 5–8, Lead 8+.
 * **Application**: A formal expression of interest by a Candidate for a specific Job_Description, created only when the Job_Description's Application_Channel is `Senior_Dashboard` or `Admin_Dashboard`. Status one of: `Submitted`, `Under Review`, `Forwarded to Recruiter`, `Closed`.
@@ -173,7 +174,7 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 4. WHILE an account is `Approved`, THE Platform SHALL let the Candidate edit any field of their own profile at any time.
 5. WHEN a Candidate creates or edits their profile, THE Platform SHALL record the change in the Audit_Log with actor, before and after field values, and a UTC timestamp at millisecond precision.
 6. THE Platform SHALL classify a profile as `Complete` when all of the following hold, and `Draft` otherwise: full name of 1–100 characters; a verified email address; a phone number in valid E.164 form; at least one education entry; and at least one skill. This is the single definition of profile completeness used across the Platform.
-7. THE Platform SHALL classify a Candidate as `Application-Ready` when their profile is `Complete` and at least one CV_Version exists on their account.
+7. THE Platform SHALL classify a Candidate as `Application-Ready` when their profile is `Complete` and at least one CV_Version exists in any of their CV_Variants.
 8. WHEN a Candidate saves profile changes that leave the profile not `Complete`, THE Platform SHALL persist the profile in `Draft` state and list every missing or invalid field by name.
 9. WHEN a Candidate attempts an action that requires `Application-Ready` while they are not, THE Platform SHALL block the action and return an error naming every unmet condition.
 10. THE Platform SHALL let Admin sessions view the full Candidate profile, including all fields, the profile audit history, `Account_Status`, and the CV_Version list.
@@ -210,33 +211,57 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 
 ### Requirement 5: CV Upload and Version Control
 
-**User Story:** As a Candidate, I want every CV I upload to be kept as an immutable version, so that my history is never lost and Admins can see how I have evolved.
+**User Story:** As a Candidate, I want to maintain separate CV variants targeted at different role types (e.g., Software Engineering, Data Engineering), upload new versions to each independently, and choose which variant to submit when applying — so that each application goes out with the most relevant CV, and my full upload history is never lost.
 
 #### Acceptance Criteria
 
-1. THE Platform SHALL accept a CV upload only when the file is a valid PDF, verified by content inspection rather than file extension alone, and is at most 10 MB.
-2. IF an uploaded file is not a valid PDF, exceeds 10 MB, or is password-protected or unreadable, THEN THE Platform SHALL reject it without storing any data and return an error identifying each specific violation (format, size, readability).
+1. THE Platform SHALL accept a CV upload only when the file is a valid PDF or DOCX, verified by content inspection rather than file extension alone, and is at most 10 MB.
+2. IF an uploaded file is not a valid PDF or DOCX, exceeds 10 MB, or is password-protected or unreadable, THEN THE Platform SHALL reject it without storing any data and return an error identifying each specific violation (format, size, readability).
 3. WHEN a CV upload passes validation, THE Platform SHALL scan it for malware before it becomes available; IF malware is detected, THEN THE Platform SHALL quarantine the file, exclude it from candidate-visible storage, and notify the Candidate and an Admin.
-4. WHEN a CV upload passes validation and scanning, THE Platform SHALL store it as a new CV_Version and SHALL never modify, overwrite, or delete any existing CV_Version.
-5. THE Platform SHALL assign each CV_Version: the owning Candidate identity; a version number starting at 1 and incrementing by exactly 1 per successful upload; an upload timestamp in UTC at millisecond precision; the file size; and a SHA-256 checksum computed at upload.
-6. THE Platform SHALL designate exactly one CV_Version per Candidate as `active`: by default the highest-numbered version, unless an Admin has explicitly designated a specific version, in which case that designation holds until a newer version is uploaded or the Admin changes it.
-7. WHEN a Candidate uploads a new CV_Version, THE Platform SHALL make the new version `active` and clear any prior Admin designation.
-8. THE Platform SHALL let a Candidate view their own CV_Version history (version number, upload timestamp, size, active flag) and download any version as the exact original PDF.
-9. THE Platform SHALL let Admin sessions view every Candidate's CV_Version history and download any version.
-10. WHEN any CV_Version is retrieved, THE Platform SHALL recompute its checksum and, IF it does not match the stored checksum, THEN fail the retrieval and raise an integrity alert to an Admin.
-11. THE Platform SHALL store CV files encrypted at rest.
-12. THE Platform SHALL retain all CV_Versions per the Data Retention constraint; no role SHALL delete an individual CV_Version. Account-level data deletion follows the Data Retention constraint.
-13. THE Platform SHALL record every CV_Version upload, active-version designation, quarantine, and integrity-check failure in the Audit_Log (Requirement 8).
+4. WHEN a CV upload passes validation and scanning, THE Platform SHALL store it as a new CV_Version within the target CV_Variant and SHALL never modify, overwrite, or delete any existing CV_Version.
+5. THE Platform SHALL assign each CV_Version: the owning Candidate identity; the owning CV_Variant identifier; a version number starting at 1 and incrementing by exactly 1 per successful upload within that CV_Variant; an upload timestamp in UTC at millisecond precision; the file size; and a SHA-256 checksum computed at upload. Version numbers are scoped per CV_Variant and are independent across variants.
+6. THE Platform SHALL allow a Candidate to maintain between 1 and 5 CV_Variants. Each CV_Variant SHALL have: a unique name within the Candidate's account of 1–100 characters (e.g., "Software Engineering", "Data Engineering"); an optional free-text description of up to 300 characters; and an `active` CV_Version designation (the highest-numbered version by default, unless an Admin or the Candidate has explicitly designated a specific version).
+7. THE Platform SHALL designate exactly one CV_Variant per Candidate as `primary`. The first CV_Variant created SHALL become `primary` automatically. A Candidate or an Admin MAY change the `primary` designation to any other existing CV_Variant at any time. The `primary` designation is used as the default when no variant is explicitly selected (e.g., for scoring, AI analysis, or in contexts where variant selection is not surfaced).<to be reviewd>
+8. THE Platform SHALL let a Candidate create a new CV_Variant by providing a name; the variant is created empty (no CV_Versions) until the first upload. THE Platform SHALL reject creation of a sixth CV_Variant and return an error indicating the 5-variant limit.
+9. THE Platform SHALL let a Candidate rename or update the description of any of their CV_Variants at any time.
+10. THE Platform SHALL NOT allow a Candidate to delete a CV_Variant if it is the only remaining variant on the account. IF a Candidate deletes a CV_Variant that is `primary`, THE Platform SHALL automatically assign the `primary` designation to the variant with the most recently uploaded CV_Version among the remaining variants.
+11. THE Platform SHALL designate exactly one CV_Version per CV_Variant as `active` within that variant: by default the highest-numbered version in that variant, unless an Admin or the Candidate has explicitly designated a specific version, in which case that designation holds until a newer version is uploaded to that variant or the designation is changed.<todo: candidate and admin can't change active version>
+12. WHEN a Candidate uploads a new CV_Version to a CV_Variant, THE Platform SHALL make the new version `active` within that variant and clear any prior explicit designation for that variant only.
+13. THE Platform SHALL let a Candidate view their own CV_Variant list and, for each variant, the full CV_Version history (version number, upload timestamp, size, active flag) and download any version as the exact original file.
+14. THE Platform SHALL let Admin sessions view every Candidate's CV_Variant list and all CV_Version histories, and download any version.
+15. WHEN any CV_Version is retrieved, THE Platform SHALL recompute its checksum and, IF it does not match the stored checksum, THEN fail the retrieval and raise an integrity alert to an Admin.<todo: check this>
+16. THE Platform SHALL store CV files encrypted at rest.
+17. THE Platform SHALL retain all CV_Versions per the Data Retention constraint; no role SHALL delete an individual CV_Version. Account-level data deletion follows the Data Retention constraint.
+18. ~~THE Platform SHALL record every CV_Version upload, active-version designation, quarantine, and integrity-check failure in the Audit_Log.~~ *(Removed — general Audit_Log is no longer defined; see Requirement 8.)*
 
 ---
 
 ### Requirement 6: Job Description Posting
 
-**User Story:** As a Senior, I want to post job descriptions on the platform, so that Candidates can discover and apply to relevant opportunities.
+**User Story:** As a Senior or an Admin, I want to post job descriptions on the platform, so that Candidates can discover and apply to relevant opportunities.
 
 #### Acceptance Criteria
 
 1. THE Platform SHALL let a Senior or an Admin create a Job_Description containing: role title (≤150 characters); company name (≤150 characters); location (≤200 characters); work model (one of `Onsite`, `Hybrid`, `Remote`); employment type (one of `Full-time`, `Part-time`, `Contract`, `Freelance`, `Internship`); experience level (one of `Junior-level`, `Mid-level`, `Senior-level`, `Lead`); 1–20 required skills from the Skill_Taxonomy; an optional number of openings; an optional recruiter contact email in valid format; and a description (≤5000 characters).
+
+1a. AS AN ALTERNATIVE to filling fields manually, THE Platform SHALL let a Senior or Admin initiate Job_Description creation by providing either:
+   - a **URL** pointing to a publicly accessible job posting, OR
+   - a **free-text block** (≤10 000 characters) containing a job description in any format.
+
+1b. WHEN a URL is submitted, THE Platform SHALL fetch the page content and extract structured data (role title, company name, location, work model, employment type, experience level, skills, description), then pre-populate the Job_Description creation form with the extracted values.
+
+1c. WHEN a free-text block is submitted, THE Platform SHALL parse it to extract the same structured fields and pre-populate the Job_Description creation form with the extracted values.
+
+1d. IN BOTH cases, all pre-populated fields SHALL remain fully editable before the user confirms creation. Validation rules from criterion 1 (character limits, allowed enum values, skill count) SHALL be enforced at confirmation time, not at extraction time.
+
+1e. WHEN extracted skills do not exactly match entries in the Skill_Taxonomy, THE Platform SHALL perform fuzzy matching and suggest the closest Skill_Taxonomy entries; the user SHALL manually confirm or replace any unmatched skill before the Job_Description can be saved.
+
+1f. IF extraction yields no recognizable value for a required field, THE Platform SHALL leave that field blank and display a warning prompting the user to fill it in manually before confirming.
+
+1g. THE Platform SHALL NOT persist any Job_Description created via URL or free-text extraction until the user explicitly confirms the pre-populated form.
+
+1h. THE Platform SHALL rate-limit URL fetch requests per user session to prevent abuse, and SHALL reject URLs that resolve to private or non-routable IP address ranges.
+
 2. THE Platform SHALL represent every Job_Description with one status: `Draft`, `Open`, or `Closed`.
 3. WHEN a Job_Description is created, THE Platform SHALL assign a unique identifier, record the creator identity and a creation timestamp, and set its status to `Draft`.
 4. WHEN the creator or an Admin publishes a `Draft` Job_Description, THE Platform SHALL transition it to `Open` and make it visible to Candidates.
@@ -264,14 +289,11 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 
 1. THE Platform SHALL allow a Candidate to submit an Application to an `Open` Job_Description only when the Candidate is `Application-Ready` (Requirement 4 AC7).
 2. IF a Candidate attempts to apply while not `Application-Ready`, THEN THE Platform SHALL reject the submission and return an error naming each unmet condition, including each missing or invalid profile field and, where applicable, the absence of any CV_Version.
-3. WHEN a Candidate clicks apply on a Job_Description, THE Platform SHALL route the request according to that Job_Description's Application_Channel (Requirement 6 AC15), abstracted from the Candidate as a single "apply" action:
-   - `Senior_Dashboard`: THE Platform SHALL create an in-platform Application (per criteria 4–6 below) and list it in the creating Senior's applicant list (Requirement 3 AC4) as well as the Admin portal.
-   - `Admin_Dashboard`: THE Platform SHALL create an in-platform Application (per criteria 4–6 below) and list it only in the Admin portal's applicant list; THE Platform SHALL NOT include it in any Senior's applicant list view.
-   - `External_Careers_URL`: THE Platform SHALL NOT create an in-platform Application record and SHALL instead redirect the Candidate's browser to the Job_Description's configured external careers URL.
-4. WHEN a Candidate submits an Application via the `Senior_Dashboard` or `Admin_Dashboard` channel, THE Platform SHALL record: the Candidate identity; the Job_Description identifier; the CV_Version that is `active` at submission time; and a submission timestamp in UTC.
-5. FOR ALL Applications, the CV_Version recorded at submission SHALL remain immutable regardless of later CV uploads or Admin re-designation.
-6. THE Platform SHALL represent every in-platform Application with one status: `Submitted`, `Under Review`, `Forwarded to Recruiter`, or `Closed`.
-7. IF a Candidate has a non-terminal Application (`Submitted` or `Under Review`) for a Job_Description and attempts to apply to it again, THEN THE Platform SHALL reject the second submission and inform the Candidate that they have already applied.
+3. WHEN a Candidate submits an Application, THE Platform SHALL record: the Candidate identity; the Job_Description identifier; the CV_Version that is `active` at submission time; and a submission timestamp in UTC.
+4. FOR ALL Applications, the CV_Version recorded at submission SHALL remain immutable regardless of later CV uploads or Admin re-designation.
+5. THE Platform SHALL represent every Application with one status: `Submitted`, `Under Review`, `Forwarded to Recruiter`, `Withdrawn`, or `Closed`.
+6. IF a Candidate has a non-terminal Application (`Submitted` or `Under Review`) for a Job_Description and attempts to apply to it again, THEN THE Platform SHALL reject the second submission and inform the Candidate that they have already applied.
+7. THE Platform SHALL allow a Candidate to withdraw their own Application while it is `Submitted` or `Under Review`, transitioning it to `Withdrawn`.
 8. THE Platform SHALL allow re-application to the same Job_Description only when the Candidate has no non-terminal Application for it and the posting is `Open`.
 9. THE Platform SHALL display to the Candidate a list of all their in-platform Applications, each showing current status, applied role title, company name, and submission date.
 10. THE Platform SHALL let Admin sessions set any in-platform Application to any defined status and SHALL record each change with a timestamp and the Admin identity.
@@ -740,10 +762,13 @@ The following properties are amenable to property-based testing.
 
 #### CV Version Control (Requirement 5)
 
-* **Monotonic version numbers**: For all Candidates, each successive CV_Version's number is strictly greater than all prior numbers. ∀ v₁, v₂ ∈ CV_Versions(candidate): upload_time(v₁) < upload_time(v₂) → version_number(v₁) < version_number(v₂)
+* **Monotonic version numbers**: For all Candidates and all CV_Variants, each successive CV_Version's number within a variant is strictly greater than all prior numbers in that same variant. ∀ v₁, v₂ ∈ CV_Versions(candidate, variant): upload_time(v₁) < upload_time(v₂) → version_number(v₁) < version_number(v₂). Version numbers across different variants of the same Candidate are independent.
 * **Upload integrity round-trip**: For any CV file uploaded, the file retrieved is byte-for-byte identical. retrieve(store(file)) == file
-* **Version count invariant**: After N successful uploads, the number of stored CV_Versions for that Candidate equals N.
-* **Exactly one active**: For any Candidate with ≥1 CV_Version, exactly one CV_Version is `active`.
+* **Version count invariant**: After N successful uploads to a given CV_Variant, the number of stored CV_Versions for that Candidate in that variant equals N.
+* **Exactly one active per variant**: For any CV_Variant with ≥1 CV_Version, exactly one CV_Version in that variant is `active`.
+* **Exactly one primary variant**: For any Candidate with ≥1 CV_Variant, exactly one CV_Variant is `primary`.
+* **Variant count bounds**: For any Candidate, the number of CV_Variants is in [1, 5].
+* **Application CV snapshot**: The CV_Version recorded on an Application is the `active` version of the selected (or defaulted) CV_Variant at submission time, and never changes thereafter.
 
 #### Job Description (Requirement 6)
 
@@ -752,7 +777,7 @@ The following properties are amenable to property-based testing.
 
 #### Application (Requirement 7)
 
-* **Idempotent application**: For a given Candidate + Job_Description pair with an in-platform Application_Channel, at most one non-terminal Application exists at any time. submit(c, jd); submit(c, jd) → count(non_terminal_applications(c, jd)) == 1
+* **Idempotent application**: For a given Candidate + Job_Description pair, at most one non-terminal Application exists at any time. submit(c, jd); submit(c, jd) → count(non_terminal_applications(c, jd)) == 1
 * **CV snapshot immutability**: The CV_Version recorded on an Application never changes after submission.
 * **Close cascade**: After a Job_Description transitions to `Closed`, no Application for it remains in `Submitted` or `Under Review`.
 * **Application-Ready gate**: Every successfully submitted Application belongs to a Candidate who was `Application-Ready` at submission time.
@@ -780,3 +805,5 @@ The following properties are amenable to property-based testing.
 #### JD Extraction Round-Trip (Requirement 14)
 
 * **Keyword containment**: For all keywords in a completed JD_Extraction, each keyword appears in or is semantically derivable from the source Job_Description text.
+* **Idempotent application**: For a given Candidate + Job_Description pair, at most one non-terminal Application exists at any time. submit(c, jd); submit(c, jd) → count(non_terminal_applications(c, jd)) == 1
+* **CV snapshot immutability**: The CV_Version recorded on an Application (from whichever CV_Variant was selected at submission) never changes after submission.
