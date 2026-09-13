@@ -289,11 +289,14 @@ Phase 2 requirements are retained below for context but are **out of scope for t
 
 1. THE Platform SHALL allow a Candidate to submit an Application to an `Open` Job_Description only when the Candidate is `Application-Ready` (Requirement 4 AC7).
 2. IF a Candidate attempts to apply while not `Application-Ready`, THEN THE Platform SHALL reject the submission and return an error naming each unmet condition, including each missing or invalid profile field and, where applicable, the absence of any CV_Version.
-3. WHEN a Candidate submits an Application, THE Platform SHALL record: the Candidate identity; the Job_Description identifier; the CV_Version that is `active` at submission time; and a submission timestamp in UTC.
-4. FOR ALL Applications, the CV_Version recorded at submission SHALL remain immutable regardless of later CV uploads or Admin re-designation.
-5. THE Platform SHALL represent every Application with one status: `Submitted`, `Under Review`, `Forwarded to Recruiter`, `Withdrawn`, or `Closed`.
-6. IF a Candidate has a non-terminal Application (`Submitted` or `Under Review`) for a Job_Description and attempts to apply to it again, THEN THE Platform SHALL reject the second submission and inform the Candidate that they have already applied.
-7. THE Platform SHALL allow a Candidate to withdraw their own Application while it is `Submitted` or `Under Review`, transitioning it to `Withdrawn`.
+3. WHEN a Candidate clicks apply on a Job_Description, THE Platform SHALL route the request according to that Job_Description's Application_Channel (Requirement 6 AC15), abstracted from the Candidate as a single "apply" action:
+   - `Senior_Dashboard`: THE Platform SHALL create an in-platform Application (per criteria 4–6 below) and list it in the creating Senior's applicant list (Requirement 3 AC4) as well as the Admin portal.
+   - `Admin_Dashboard`: THE Platform SHALL create an in-platform Application (per criteria 4–6 below) and list it only in the Admin portal's applicant list; THE Platform SHALL NOT include it in any Senior's applicant list view.
+   - `External_Careers_URL`: THE Platform SHALL NOT create an in-platform Application record and SHALL instead redirect the Candidate's browser to the Job_Description's configured external careers URL.
+4. WHEN a Candidate submits an Application via the `Senior_Dashboard` or `Admin_Dashboard` channel, THE Platform SHALL record: the Candidate identity; the Job_Description identifier; the CV_Version that is `active` at submission time; and a submission timestamp in UTC.
+5. FOR ALL Applications, the CV_Version recorded at submission SHALL remain immutable regardless of later CV uploads or Admin re-designation.
+6. THE Platform SHALL represent every in-platform Application with one status: `Submitted`, `Under Review`, `Forwarded to Recruiter`, or `Closed`.
+7. IF a Candidate has a non-terminal Application (`Submitted` or `Under Review`) for a Job_Description and attempts to apply to it again, THEN THE Platform SHALL reject the second submission and inform the Candidate that they have already applied.
 8. THE Platform SHALL allow re-application to the same Job_Description only when the Candidate has no non-terminal Application for it and the posting is `Open`.
 9. THE Platform SHALL display to the Candidate a list of all their in-platform Applications, each showing current status, applied role title, company name, and submission date.
 10. THE Platform SHALL let Admin sessions set any in-platform Application to any defined status and SHALL record each change with a timestamp and the Admin identity.
